@@ -1,0 +1,12 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  labels:
+    app.kubernetes.io/name: bootstrap
+    app.kubernetes.io/instance: bootstrap-sample
+    app.kubernetes.io/part-of: crd-bootstrap
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: crd-bootstrap
+  name: bootstrap-sample
+spec:
+  # TODO(user): Add fields here

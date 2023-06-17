@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: crd-bootstrap
 repo: github.com/Skarlso/crd-bootstrap
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: crd-bootstrap
+  group: delivery
+  kind: Bootstrap
+  path: github.com/Skarlso/crd-bootstrap/api/v1alpha1
+  version: v1alpha1
 version: "3"
