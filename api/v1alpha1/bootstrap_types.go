@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,7 +53,7 @@ type Source struct {
 type BootstrapSpec struct {
 	// Interval defines the regular interval at which a poll for new version should happen.
 	// +optional
-	Interval metav1.Time `json:"interval,omitempty"`
+	Interval metav1.Duration `json:"interval,omitempty"`
 
 	// SourceRef defines a reference to a source which will provide a CRD based on some contract.
 	// +required
@@ -92,6 +94,12 @@ func (in *Bootstrap) GetConditions() []metav1.Condition {
 // SetConditions sets the conditions of the ComponentVersion.
 func (in *Bootstrap) SetConditions(conditions []metav1.Condition) {
 	in.Status.Conditions = conditions
+}
+
+// GetRequeueAfter returns the duration after which the ComponentVersion must be
+// reconciled again.
+func (in *Bootstrap) GetRequeueAfter() time.Duration {
+	return in.Spec.Interval.Duration
 }
 
 //+kubebuilder:object:root=true

@@ -18,19 +18,26 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Skarlso/crd-bootstrap/pkg/source"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	deliveryv1alpha1 "github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 )
 
 // BootstrapReconciler reconciles a Bootstrap object
 type BootstrapReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	SourceProvider source.Contract
 }
 
 //+kubebuilder:rbac:groups=delivery.crd-bootstrap,resources=bootstraps,verbs=get;list;watch;create;update;patch;delete
@@ -42,9 +49,25 @@ type BootstrapReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	logger.Info("replication going")
+
+	obj := &v1alpha1.Bootstrap{}
+	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+
+		return ctrl.Result{}, err
+	}
+
+	crd, err := r.SourceProvider.FetchCRD()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to fetch source: %w", err)
+	}
+
+	logger.V(4).Info("got mah CRD", "crd", string(crd))
 
 	return ctrl.Result{}, nil
 }
@@ -52,6 +75,6 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *BootstrapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&deliveryv1alpha1.Bootstrap{}).
+		For(&v1alpha1.Bootstrap{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
