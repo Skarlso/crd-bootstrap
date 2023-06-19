@@ -34,9 +34,9 @@ load('ext://restart_process', 'docker_build_with_restart')
 # binary is rebuilt and the hot swat wrapper takes care of the rest.
 local_resource(
     'crd-bootstrap-controller-binary',
-    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager ./',
+    'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/manager cmd/main.go',
     deps = [
-        "main.go",
+        "cmd/main.go",
         "go.mod",
         "go.sum",
         "api",
@@ -54,7 +54,7 @@ local_resource(
 entrypoint = ['/manager']
 dockerfile = 'tilt.dockerfile'
 docker_build_with_restart(
-    'ghcr.io/Skarlso/crd-bootstrap-controller',
+    'skarlso/crd-bootstrap-controller',
     '.',
     dockerfile = dockerfile,
     entrypoint = entrypoint,
