@@ -8,5 +8,13 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: crd-bootstrap
   name: bootstrap-sample
+  namespace: crd-bootstrap-system
 spec:
-  # TODO(user): Add fields here
+  interval: 10s
+  source:
+    configMap:
+      name: crd-bootstrap-sample
+      namespace: crd-bootstrap-system
+      version: 1.0.0
+  templateRef:
+    name: crd-template

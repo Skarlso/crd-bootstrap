@@ -22,18 +22,27 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
+	"github.com/fluxcd/pkg/apis/meta"
+	"github.com/fluxcd/pkg/runtime/conditions"
+	"github.com/fluxcd/pkg/runtime/patch"
 	"github.com/fluxcd/pkg/ssa"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+)
 
-	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+const (
+	finalizer = "delivery.crd-bootstrap"
 )
 
 // BootstrapReconciler reconciles a Bootstrap object
@@ -44,18 +53,28 @@ type BootstrapReconciler struct {
 	SourceProvider source.Contract
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *BootstrapReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.Bootstrap{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Complete(r)
+}
+
 //+kubebuilder:rbac:groups=delivery.crd-bootstrap,resources=bootstraps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=delivery.crd-bootstrap,resources=bootstraps/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=delivery.crd-bootstrap,resources=bootstraps/finalizers,verbs=update
 //+kubebuilder:rbac:groups=delivery.crd-bootstrap,resources=bootstraps/finalizers,verbs=update
 
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("replication going")
+	logger.Info("applying request")
 
 	obj := &v1alpha1.Bootstrap{}
 	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
@@ -66,16 +85,54 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if obj.DeletionTimestamp != nil {
+		if !controllerutil.ContainsFinalizer(obj, finalizer) {
+			return ctrl.Result{}, nil
+		}
+
+		if err := r.reconcileDelete(ctx, obj); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to delete bootstrap: %w", err)
+		}
+
+		return ctrl.Result{}, nil
+	}
+
+	patchHelper := patch.NewSerialPatcher(obj, r.Client)
+
+	// AddFinalizer is not present already.
+	controllerutil.AddFinalizer(obj, finalizer)
+
+	// Always attempt to patch the object and status after each reconciliation.
+	defer func() {
+		// Patching has not been set up, or the controller errored earlier.
+		if patchHelper == nil {
+			return
+		}
+
+		obj.Status.ObservedGeneration = obj.Generation
+
+		// Set status observed generation option if the object is stalled or ready.
+		if perr := patchHelper.Patch(ctx, obj); perr != nil {
+			err = errors.Join(err, perr)
+		}
+	}()
+
 	temp, err := os.MkdirTemp("", "crd")
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create temp folder: %w", err)
+		err := fmt.Errorf("failed to create temp folder: %w", err)
+		conditions.MarkFalse(obj, meta.ReadyCondition, "TempFolderFailedToCreate", err.Error())
+
+		return ctrl.Result{}, err
 	}
 
 	// should probably return a file system / single YAML. Because they can be super large, it's
 	// not vise to store it in memory as a buffer.
-	crd, err := r.SourceProvider.FetchCRD(temp)
+	location, err := r.SourceProvider.FetchCRD(ctx, temp, *obj.Spec.Source)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to fetch source: %w", err)
+		err := fmt.Errorf("failed to fetch source: %w", err)
+		conditions.MarkFalse(obj, meta.ReadyCondition, "CRDFetchFailed", err.Error())
+
+		return ctrl.Result{}, err
 	}
 
 	defer func() {
@@ -87,29 +144,60 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	kubeconfigArgs := genericclioptions.NewConfigFlags(false)
 	sm, err := NewResourceManager(kubeconfigArgs)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("✗ failed to create resource manager: %w", err)
+		err := fmt.Errorf("failed to create resource manager: %w", err)
+		conditions.MarkFalse(obj, meta.ReadyCondition, "ResourceManagerCreateFailed", err.Error())
+
+		return ctrl.Result{}, err
 	}
 
-	objects, err := readObjects(crd)
+	objects, err := readObjects(location)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("✗ failed to construct objects to apply: %w", err)
+		err := fmt.Errorf("failed to construct objects to apply: %w", err)
+		conditions.MarkFalse(obj, meta.ReadyCondition, "ReadingObjectsToApplyFailed", err.Error())
+
+		return ctrl.Result{}, err
 	}
 
-	if _, err := sm.ApplyAllStaged(context.Background(), objects, ssa.DefaultApplyOptions()); err != nil {
-		return ctrl.Result{}, fmt.Errorf("✗ failed to apply manifests: %w", err)
+	if _, err := sm.ApplyAllStaged(ctx, objects, ssa.DefaultApplyOptions()); err != nil {
+		err := fmt.Errorf("failed to apply manifests: %w", err)
+		conditions.MarkFalse(obj, meta.ReadyCondition, "ApplyingCRDSFailed", err.Error())
+
+		return ctrl.Result{}, err
 	}
 
-	logger.Info("waiting for ocm deployment to be ready")
 	if err = sm.Wait(objects, ssa.DefaultWaitOptions()); err != nil {
-		return ctrl.Result{}, fmt.Errorf("✗ failed to wait for objects to be ready: %w", err)
+		err := fmt.Errorf("failed to wait for objects to be ready: %w", err)
+		conditions.MarkFalse(obj, meta.ReadyCondition, "WaitingOnObjectsFailed", err.Error())
+
+		return ctrl.Result{}, err
 	}
+
+	crds := make([]string, 0, len(objects))
+	for _, o := range objects {
+		crds = append(crds, o.GetName())
+	}
+
+	obj.Status.AppliedCRDs = crds
+
+	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd")
 
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *BootstrapReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Bootstrap{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Complete(r)
+func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1.Bootstrap) error {
+	logger := log.FromContext(ctx)
+
+	for _, crd := range obj.Status.AppliedCRDs {
+		logger.Info("deleting CRD", "name", crd)
+		crdObject := &unstructured.Unstructured{}
+		crdObject.SetName(crd)
+		crdObject.SetKind("CustomResourceDefinition")
+		crdObject.SetAPIVersion(v1.SchemeGroupVersion.String())
+		if err := r.Delete(ctx, crdObject); err != nil {
+			return fmt.Errorf("failed to delete object: %w", err)
+		}
+	}
+
+	controllerutil.RemoveFinalizer(obj, finalizer)
+	return nil
 }

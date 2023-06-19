@@ -38,7 +38,6 @@ spec:
               interval:
                 description: Interval defines the regular interval at which a poll
                   for new version should happen.
-                format: date-time
                 type: string
               source:
                 description: SourceRef defines a reference to a source which will
@@ -50,10 +49,13 @@ spec:
                     properties:
                       name:
                         type: string
+                      namespace:
+                        type: string
                       version:
                         type: string
                     required:
                     - name
+                    - namespace
                     - version
                     type: object
                   gitHub:
@@ -74,7 +76,13 @@ spec:
                 description: TemplateRef defines a reference to a configmap which
                   holds a template that we will use to verify that the CRD doesn't
                   break anything if applied.
-                type: string
+                properties:
+                  name:
+                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?'
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
             required:
             - source
             - templateRef
@@ -82,6 +90,12 @@ spec:
           status:
             description: BootstrapStatus defines the observed state of Bootstrap
             properties:
+              appliedCRDs:
+                description: AppliedCRDs is a list of names that this object applied.
+                  Stored for deletion when finalizer is handled.
+                items:
+                  type: string
+                type: array
               conditions:
                 items:
                   description: "Condition contains details for one aspect of the current

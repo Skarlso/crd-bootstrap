@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -30,6 +31,8 @@ type GitHub struct {
 type ConfigMap struct {
 	// +required
 	Name string `json:"name"`
+	// +required
+	Namespace string `json:"namespace"`
 	// +required
 	Version string `json:"version"`
 }
@@ -62,7 +65,7 @@ type BootstrapSpec struct {
 	// TemplateRef defines a reference to a configmap which holds a template that we will use to verify that
 	// the CRD doesn't break anything if applied.
 	// +required
-	TemplateRef string `json:"templateRef"`
+	TemplateRef v1.LocalObjectReference `json:"templateRef"`
 }
 
 // BootstrapStatus defines the observed state of Bootstrap
@@ -84,6 +87,10 @@ type BootstrapStatus struct {
 
 	// +optional
 	LastAppliedDigest string `json:"lastAppliedDigest,omitempty"`
+
+	// AppliedCRDs is a list of names that this object applied. Stored for deletion when finalizer is handled.
+	// +optional
+	AppliedCRDs []string `json:"appliedCRDs,omitempty"`
 }
 
 // GetConditions returns the conditions of the ComponentVersion.
