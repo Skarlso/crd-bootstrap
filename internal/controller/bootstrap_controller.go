@@ -18,11 +18,15 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
+	"github.com/fluxcd/pkg/ssa"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,7 +52,7 @@ type BootstrapReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
 	logger := log.FromContext(ctx)
 
 	logger.Info("replication going")
@@ -62,12 +66,43 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	crd, err := r.SourceProvider.FetchCRD()
+	temp, err := os.MkdirTemp("", "crd")
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to create temp folder: %w", err)
+	}
+
+	// should probably return a file system / single YAML. Because they can be super large, it's
+	// not vise to store it in memory as a buffer.
+	crd, err := r.SourceProvider.FetchCRD(temp)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to fetch source: %w", err)
 	}
 
-	logger.V(4).Info("got mah CRD", "crd", string(crd))
+	defer func() {
+		if oerr := os.RemoveAll(temp); oerr != nil {
+			err = errors.Join(err, oerr)
+		}
+	}()
+
+	kubeconfigArgs := genericclioptions.NewConfigFlags(false)
+	sm, err := NewResourceManager(kubeconfigArgs)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("✗ failed to create resource manager: %w", err)
+	}
+
+	objects, err := readObjects(crd)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("✗ failed to construct objects to apply: %w", err)
+	}
+
+	if _, err := sm.ApplyAllStaged(context.Background(), objects, ssa.DefaultApplyOptions()); err != nil {
+		return ctrl.Result{}, fmt.Errorf("✗ failed to apply manifests: %w", err)
+	}
+
+	logger.Info("waiting for ocm deployment to be ready")
+	if err = sm.Wait(objects, ssa.DefaultWaitOptions()); err != nil {
+		return ctrl.Result{}, fmt.Errorf("✗ failed to wait for objects to be ready: %w", err)
+	}
 
 	return ctrl.Result{}, nil
 }
