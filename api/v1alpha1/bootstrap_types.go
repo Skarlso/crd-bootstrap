@@ -20,22 +20,78 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// GitHub defines a GitHub type source where the CRD is coming from `release` section of a GitHub repository.
+type GitHub struct {
+}
+
+// ConfigMap defines a reference to a configmap which hold the CRD information. Version is taken from a version field.
+type ConfigMap struct {
+	// +required
+	Name string `json:"name"`
+	// +required
+	Version string `json:"version"`
+}
+
+// URL holds a URL from which to fetch the CRD. Version is defined through the digest of the content.
+type URL struct {
+	URL string `json:"url"`
+}
+
+// Source defines options from where to fetch CRD content.
+type Source struct {
+	// +optional
+	GitHub *GitHub `json:"gitHub,omitempty"`
+	// +optional
+	ConfigMap *ConfigMap `json:"configMap,omitempty"`
+	// +optional
+	URL *URL `json:"url,omitempty"`
+}
 
 // BootstrapSpec defines the desired state of Bootstrap
 type BootstrapSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Interval defines the regular interval at which a poll for new version should happen.
+	// +optional
+	Interval metav1.Time `json:"interval,omitempty"`
 
-	// Foo is an example field of Bootstrap. Edit bootstrap_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// SourceRef defines a reference to a source which will provide a CRD based on some contract.
+	// +required
+	Source *Source `json:"source"`
+
+	// TemplateRef defines a reference to a configmap which holds a template that we will use to verify that
+	// the CRD doesn't break anything if applied.
+	// +required
+	TemplateRef string `json:"templateRef"`
 }
 
 // BootstrapStatus defines the observed state of Bootstrap
 type BootstrapStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// ObservedGeneration is the last reconciled generation.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// +optional
+	// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
+	// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// +optional
+	LastAttemptedVersion string `json:"lastAttemptedVersion,omitempty"`
+
+	// +optional
+	LastAppliedVersion string `json:"lastAppliedVersion,omitempty"`
+
+	// +optional
+	LastAppliedDigest string `json:"lastAppliedDigest,omitempty"`
+}
+
+// GetConditions returns the conditions of the ComponentVersion.
+func (in *Bootstrap) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the conditions of the ComponentVersion.
+func (in *Bootstrap) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
 }
 
 //+kubebuilder:object:root=true
