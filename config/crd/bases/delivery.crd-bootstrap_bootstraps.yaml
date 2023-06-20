@@ -90,12 +90,6 @@ spec:
           status:
             description: BootstrapStatus defines the observed state of Bootstrap
             properties:
-              appliedCRDs:
-                description: AppliedCRDs is a list of names that this object applied.
-                  Stored for deletion when finalizer is handled.
-                items:
-                  type: string
-                type: array
               conditions:
                 items:
                   description: "Condition contains details for one aspect of the current

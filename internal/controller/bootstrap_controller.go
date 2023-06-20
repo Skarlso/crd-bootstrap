@@ -30,7 +30,6 @@ import (
 	"github.com/fluxcd/pkg/ssa"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -158,6 +157,12 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	for _, o := range objects {
+		o.SetLabels(map[string]string{
+			v1alpha1.BootstrapOwnerLabelKey: obj.GetName(),
+		})
+	}
+
 	if _, err := sm.ApplyAllStaged(ctx, objects, ssa.DefaultApplyOptions()); err != nil {
 		err := fmt.Errorf("failed to apply manifests: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "ApplyingCRDSFailed", err.Error())
@@ -172,32 +177,33 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	crds := make([]string, 0, len(objects))
-	for _, o := range objects {
-		crds = append(crds, o.GetName())
-	}
-
-	obj.Status.AppliedCRDs = crds
-
 	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd")
 
 	return ctrl.Result{}, nil
 }
 
 func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1.Bootstrap) error {
+	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 	logger := log.FromContext(ctx)
+	logger.Info("cleaning owned CRDS...")
 
-	for _, crd := range obj.Status.AppliedCRDs {
-		logger.Info("deleting CRD", "name", crd)
-		crdObject := &unstructured.Unstructured{}
-		crdObject.SetName(crd)
-		crdObject.SetKind("CustomResourceDefinition")
-		crdObject.SetAPIVersion(v1.SchemeGroupVersion.String())
-		if err := r.Delete(ctx, crdObject); err != nil {
-			return fmt.Errorf("failed to delete object: %w", err)
+	crds := &v1.CustomResourceDefinitionList{}
+	if err := r.List(ctx, crds, client.MatchingLabels(map[string]string{
+		v1alpha1.BootstrapOwnerLabelKey: obj.GetName(),
+	})); err != nil {
+		return fmt.Errorf("failed to list owned CRDS: %w", err)
+	}
+
+	logger.Info("found number of crds to clean", "number", len(crds.Items))
+
+	for _, item := range crds.Items {
+		logger.V(4).Info("removed CRD", "crd", item.GetName())
+		if err := r.Delete(ctx, &item); err != nil {
+			return fmt.Errorf("failed to delete object with name %s: %w", item.GetName(), err)
 		}
 	}
 
 	controllerutil.RemoveFinalizer(obj, finalizer)
-	return nil
+
+	return patchHelper.Patch(ctx, obj)
 }

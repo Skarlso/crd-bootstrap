@@ -23,6 +23,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	BootstrapOwnerLabelKey = "delivery.crd-bootstrap.owned"
+)
+
 // GitHub defines a GitHub type source where the CRD is coming from `release` section of a GitHub repository.
 type GitHub struct {
 }
@@ -87,10 +91,6 @@ type BootstrapStatus struct {
 
 	// +optional
 	LastAppliedDigest string `json:"lastAppliedDigest,omitempty"`
-
-	// AppliedCRDs is a list of names that this object applied. Stored for deletion when finalizer is handled.
-	// +optional
-	AppliedCRDs []string `json:"appliedCRDs,omitempty"`
 }
 
 // GetConditions returns the conditions of the ComponentVersion.
