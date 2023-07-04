@@ -34,7 +34,19 @@ func readObjects(manifestPath string) ([]*unstructured.Unstructured, error) {
 	}
 	defer ms.Close()
 
-	return ssa.ReadObjects(bufio.NewReader(ms))
+	objects, err := ssa.ReadObjects(bufio.NewReader(ms))
+	if err != nil {
+		return nil, err
+	}
+	// Make sure we only returns custom resource definitions. We don't want any errand objects be applied to the cluster.
+	crds := make([]*unstructured.Unstructured, 0)
+	for _, obj := range objects {
+		if obj.GetKind() == "CustomResourceDefinition" {
+			crds = append(crds, obj)
+		}
+	}
+
+	return crds, nil
 }
 
 // ownerRef contains the server-side apply field manager and ownership labels group.
