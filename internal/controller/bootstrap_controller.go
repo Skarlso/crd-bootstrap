@@ -96,6 +96,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	// TODO: Check if CRD has been applied. If yes, do a `reconcileUpdate` of no, `reconcileNormal`.
+
 	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 
 	// AddFinalizer is not present already.
@@ -148,6 +150,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		return ctrl.Result{}, err
 	}
+
+	// TODO: I DO HAVE A LIST OF OBJECTS!! I CAN TRACK THEM INDIVIDUALLY!
 
 	objects, err := readObjects(location)
 	if err != nil {
