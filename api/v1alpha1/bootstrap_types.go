@@ -33,25 +33,37 @@ type GitHub struct {
 
 // ConfigMap defines a reference to a configmap which hold the CRD information. Version is taken from a version field.
 type ConfigMap struct {
+	// Name of the config map.
 	// +required
 	Name string `json:"name"`
+	// Namespace of the config map.
 	// +required
 	Namespace string `json:"namespace"`
+	// Semver defines the constraint of the version of the config map. The version must be provided next to the
+	// raw yaml content.
 	// +required
-	Version string `json:"version"`
+	Semver string `json:"semver"`
 }
 
 // URL holds a URL from which to fetch the CRD. Version is defined through the digest of the content.
 type URL struct {
+	// URL defines the URL from which do download the YAML content from.
+	// +required
 	URL string `json:"url"`
+	// Digest must be provided to check for new instances of the raw YAML content.
+	// +required
+	Digest string `json:"digest"`
 }
 
 // Source defines options from where to fetch CRD content.
 type Source struct {
+	// GitHub type source.
 	// +optional
 	GitHub *GitHub `json:"gitHub,omitempty"`
+	// ConfigMap type source.
 	// +optional
 	ConfigMap *ConfigMap `json:"configMap,omitempty"`
+	// URL type source.
 	// +optional
 	URL *URL `json:"url,omitempty"`
 }
@@ -83,14 +95,17 @@ type BootstrapStatus struct {
 	// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
+	// LastAppliedCRDNames contains the names of the last applied CRDs and the number of times they were applied.
 	// +optional
-	LastAttemptedVersion string `json:"lastAttemptedVersion,omitempty"`
+	LastAppliedCRDNames map[string]int `json:"lastAppliedCRDNames,omitempty"`
 
+	// LastAttemptedRevision contains the version or the digest that was tried to be applied and was either successful or failed.
 	// +optional
-	LastAppliedVersion string `json:"lastAppliedVersion,omitempty"`
+	LastAttemptedRevision string `json:"lastAttemptedRevision,omitempty"`
 
+	// LastAppliedRevision version is the version or the digest that was successfully applied.
 	// +optional
-	LastAppliedDigest string `json:"lastAppliedDigest,omitempty"`
+	LastAppliedRevision string `json:"lastAppliedRevision,omitempty"`
 }
 
 // GetConditions returns the conditions of the ComponentVersion.

@@ -3,6 +3,8 @@ module github.com/Skarlso/crd-bootstrap
 go 1.20
 
 require (
+	github.com/Masterminds/semver/v3 v3.2.1
+	github.com/blang/semver/v4 v4.0.0
 	github.com/fluxcd/pkg/apis/meta v1.1.0
 	github.com/fluxcd/pkg/runtime v0.38.1
 	github.com/fluxcd/pkg/ssa v0.28.1

@@ -100,7 +100,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 
-	// AddFinalizer is not present already.
+	// AddFinalizer if not present already.
 	controllerutil.AddFinalizer(obj, finalizer)
 
 	// Always attempt to patch the object and status after each reconciliation.
@@ -118,6 +118,20 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}()
 
+	update, version, err := r.SourceProvider.HasUpdate(ctx, obj)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to check version: %w", err)
+	}
+
+	if !update {
+		logger.Info("no update was required...")
+		conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd(s)")
+
+		return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
+	}
+
+	obj.Status.LastAttemptedRevision = version
+
 	temp, err := os.MkdirTemp("", "crd")
 	if err != nil {
 		err := fmt.Errorf("failed to create temp folder: %w", err)
@@ -128,7 +142,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// should probably return a file system / single YAML. Because they can be super large, it's
 	// not vise to store it in memory as a buffer.
-	location, err := r.SourceProvider.FetchCRD(ctx, temp, *obj.Spec.Source)
+	location, err := r.SourceProvider.FetchCRD(ctx, temp, *obj.Spec.Source, version)
 	if err != nil {
 		err := fmt.Errorf("failed to fetch source: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "CRDFetchFailed", err.Error())
@@ -151,8 +165,6 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// TODO: I DO HAVE A LIST OF OBJECTS!! I CAN TRACK THEM INDIVIDUALLY!
-
 	objects, err := readObjects(location)
 	if err != nil {
 		err := fmt.Errorf("failed to construct objects to apply: %w", err)
@@ -161,10 +173,17 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	applied := obj.Status.LastAppliedCRDNames
+	if applied == nil {
+		applied = make(map[string]int)
+	}
+
 	for _, o := range objects {
 		o.SetLabels(map[string]string{
 			v1alpha1.BootstrapOwnerLabelKey: obj.GetName(),
 		})
+
+		applied[o.GetName()]++
 	}
 
 	if _, err := sm.ApplyAllStaged(ctx, objects, ssa.DefaultApplyOptions()); err != nil {
@@ -181,7 +200,10 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd")
+	obj.Status.LastAppliedCRDNames = applied
+	obj.Status.LastAppliedRevision = version
+
+	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd(s)")
 
 	return ctrl.Result{}, nil
 }

@@ -44,31 +44,40 @@ spec:
                   provide a CRD based on some contract.
                 properties:
                   configMap:
-                    description: ConfigMap defines a reference to a configmap which
-                      hold the CRD information. Version is taken from a version field.
+                    description: ConfigMap type source.
                     properties:
                       name:
+                        description: Name of the config map.
                         type: string
                       namespace:
+                        description: Namespace of the config map.
                         type: string
-                      version:
+                      semver:
+                        description: Semver defines the constraint of the version
+                          of the config map. The version must be provided next to
+                          the raw yaml content.
                         type: string
                     required:
                     - name
                     - namespace
-                    - version
+                    - semver
                     type: object
                   gitHub:
-                    description: GitHub defines a GitHub type source where the CRD
-                      is coming from `release` section of a GitHub repository.
+                    description: GitHub type source.
                     type: object
                   url:
-                    description: URL holds a URL from which to fetch the CRD. Version
-                      is defined through the digest of the content.
+                    description: URL type source.
                     properties:
+                      digest:
+                        description: Digest must be provided to check for new instances
+                          of the raw YAML content.
+                        type: string
                       url:
+                        description: URL defines the URL from which do download the
+                          YAML content from.
                         type: string
                     required:
+                    - digest
                     - url
                     type: object
                 type: object
@@ -158,11 +167,19 @@ spec:
                   - type
                   type: object
                 type: array
-              lastAppliedDigest:
+              lastAppliedCRDNames:
+                additionalProperties:
+                  type: integer
+                description: LastAppliedCRDNames contains the names of the last applied
+                  CRDs and the number of times they were applied.
+                type: object
+              lastAppliedRevision:
+                description: LastAppliedRevision version is the version or the digest
+                  that was successfully applied.
                 type: string
-              lastAppliedVersion:
-                type: string
-              lastAttemptedVersion:
+              lastAttemptedRevision:
+                description: LastAttemptedRevision contains the version or the digest
+                  that was tried to be applied and was either successful or failed.
                 type: string
               observedGeneration:
                 description: ObservedGeneration is the last reconciled generation.
