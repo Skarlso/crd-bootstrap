@@ -64,6 +64,27 @@ spec:
                     type: object
                   gitHub:
                     description: GitHub type source.
+                    properties:
+                      baseURL:
+                        description: BaseURL is used for the GitHub API url. Defaults
+                          to github.com if not defined.
+                        type: string
+                      manifest:
+                        description: Manifest defines the name of the manifest that
+                          contains the CRD definitions on the GitHub release page.
+                        type: string
+                      secretRef:
+                        description: SecretRef contains a pointed to a Token in case
+                          the repository is private.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    required:
+                    - manifest
                     type: object
                   url:
                     description: URL type source.
@@ -81,20 +102,8 @@ spec:
                     - url
                     type: object
                 type: object
-              templateRef:
-                description: TemplateRef defines a reference to a configmap which
-                  holds a template that we will use to verify that the CRD doesn't
-                  break anything if applied.
-                properties:
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
-                    type: string
-                type: object
-                x-kubernetes-map-type: atomic
             required:
             - source
-            - templateRef
             type: object
           status:
             description: BootstrapStatus defines the observed state of Bootstrap

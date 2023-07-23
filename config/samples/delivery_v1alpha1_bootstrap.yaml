@@ -15,6 +15,4 @@ spec:
     configMap:
       name: crd-bootstrap-sample
       namespace: crd-bootstrap-system
-      version: 1.0.0
-  templateRef:
-    name: crd-template
+      semver: 1.0.0

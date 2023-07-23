@@ -29,6 +29,15 @@ const (
 
 // GitHub defines a GitHub type source where the CRD is coming from `release` section of a GitHub repository.
 type GitHub struct {
+	// BaseURL is used for the GitHub API url. Defaults to github.com if not defined.
+	// +optional
+	BaseURL string `json:"baseURL,omitempty"`
+	// SecretRef contains a pointed to a Token in case the repository is private.
+	// +optional
+	SecretRef v1.LocalObjectReference `json:"secretRef,omitempty"`
+	// Manifest defines the name of the manifest that contains the CRD definitions on the GitHub release page.
+	// +required
+	Manifest string `json:"manifest"`
 }
 
 // ConfigMap defines a reference to a configmap which hold the CRD information. Version is taken from a version field.
@@ -77,11 +86,6 @@ type BootstrapSpec struct {
 	// SourceRef defines a reference to a source which will provide a CRD based on some contract.
 	// +required
 	Source *Source `json:"source"`
-
-	// TemplateRef defines a reference to a configmap which holds a template that we will use to verify that
-	// the CRD doesn't break anything if applied.
-	// +required
-	TemplateRef v1.LocalObjectReference `json:"templateRef"`
 }
 
 // BootstrapStatus defines the observed state of Bootstrap

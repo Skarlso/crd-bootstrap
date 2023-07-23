@@ -28,9 +28,13 @@ import (
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
 	"github.com/fluxcd/pkg/ssa"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -184,6 +188,42 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		})
 
 		applied[o.GetName()]++
+	}
+
+	// Pre-fetch all objects so the verification can happen on an existing list.
+	list := &unstructured.UnstructuredList{}
+	if err := r.List(ctx, list); err != nil {
+
+		return ctrl.Result{}, fmt.Errorf("failed to fetch objects for verification purposes: %w", err)
+	}
+
+	for _, o := range objects {
+		// Create a CRD out of the content.
+		content, err := o.MarshalJSON()
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		crd := &apiextensions.CustomResourceDefinition{}
+		if err := yaml.Unmarshal(content, crd); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to unmarshal into custom resource definition")
+		}
+
+		eval, _, err := validation.NewSchemaValidator(crd.Spec.Validation)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		for _, v := range list.Items {
+			content, err := v.MarshalJSON()
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
+			if err := eval.Validate(content).AsError(); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to validate item: %s: %w", v.GetName(), err)
+			}
+		}
 	}
 
 	if _, err := sm.ApplyAllStaged(ctx, objects, ssa.DefaultApplyOptions()); err != nil {

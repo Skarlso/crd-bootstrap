@@ -10,6 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+	"github.com/Skarlso/crd-bootstrap/pkg/source"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Source provides functionality to fetch a CRD yaml from a GitHub release.
@@ -18,14 +22,45 @@ type Source struct {
 	BaseURL       string
 	ReleaseAPIURL string
 	Client        *http.Client
+
+	client client.Client
+	next   source.Contract
+}
+
+var _ source.Contract = &Source{}
+
+// NewSource creates a new GitHub handling Source.
+func NewSource(client client.Client, next source.Contract) *Source {
+	return &Source{client: client, next: next}
+}
+
+func (s *Source) FetchCRD(ctx context.Context, dir string, source v1alpha1.Source, revision string) (string, error) {
+	if source.GitHub == nil {
+		if s.next == nil {
+			return "", fmt.Errorf("github isn't defined and there are no other sources configured")
+		}
+
+		return s.next.FetchCRD(ctx, dir, source, revision)
+	}
+
+	if err := s.fetch(ctx, revision, dir); err != nil {
+		return "", fmt.Errorf("failed to fetch CRD: %w", err)
+	}
+
+	return "", nil
+}
+
+func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // GetLatestVersion calls the GitHub API and returns the latest released version.
-func GetLatestVersion() (string, error) {
+func (s *Source) GetLatestVersion() (string, error) {
 	c := http.DefaultClient
 	c.Timeout = 15 * time.Second
 
-	res, err := c.Get("o.ReleaseAPIURL" + "/latest")
+	res, err := c.Get(s.ReleaseAPIURL + "/latest")
 	if err != nil {
 		return "", fmt.Errorf("GitHub API call failed: %w", err)
 	}
@@ -46,12 +81,12 @@ func GetLatestVersion() (string, error) {
 }
 
 // ExistingVersion calls the GitHub API to confirm the given version does exist.
-func (o *Source) ExistingVersion(version string) (bool, error) {
+func (s *Source) ExistingVersion(version string) (bool, error) {
 	if !strings.HasPrefix(version, "v") {
 		version = "v" + version
 	}
 
-	ghURL := fmt.Sprintf(o.ReleaseAPIURL+"/tags/%s", version)
+	ghURL := fmt.Sprintf(s.ReleaseAPIURL+"/tags/%s", version)
 	c := http.DefaultClient
 	c.Timeout = 15 * time.Second
 
@@ -74,10 +109,10 @@ func (o *Source) ExistingVersion(version string) (bool, error) {
 	}
 }
 
-func (o *Source) fetch(ctx context.Context, version, dir string) error {
-	ghURL := fmt.Sprintf("%s/latest/download/install.yaml", o.BaseURL)
+func (s *Source) fetch(ctx context.Context, version, dir string) error {
+	ghURL := fmt.Sprintf("%s/latest/download/install.yaml", s.BaseURL)
 	if strings.HasPrefix(version, "v") {
-		ghURL = fmt.Sprintf("%s/download/%s/install.yaml", o.BaseURL, version)
+		ghURL = fmt.Sprintf("%s/download/%s/install.yaml", s.BaseURL, version)
 	}
 
 	req, err := http.NewRequest("GET", ghURL, nil)
