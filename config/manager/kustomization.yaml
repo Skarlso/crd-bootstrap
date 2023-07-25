@@ -2,5 +2,5 @@ resources:
 - manager.yaml
 images:
   - name: controller
-    newName: skarlso/crd-bootstrap-controller
+    newName: ghcr.io/skarlso/crd-bootstrap-controller
     newTag: latest
