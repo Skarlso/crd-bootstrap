@@ -37,8 +37,8 @@ changelog:
 dockers:
   - id: linux-build
     image_templates:
-    - "{{ .Env.REGISTRY }}/skarlso/{{ .ProjectName }}:{{ .Tag }}"
-    - "{{ .Env.REGISTRY }}/skarlso/{{ .ProjectName }}:latest"
+    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}"
+    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:latest"
     # GOOS of the built binary that should be used.
     goos: linux
     # GOARCH of the built binary that should be used.
