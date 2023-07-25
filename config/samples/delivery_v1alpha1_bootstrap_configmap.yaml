@@ -23,4 +23,5 @@ spec:
     configMap:
       name: crd-bootstrap-sample
       namespace: crd-bootstrap-system
-      semver: 1.0.0
+  version:
+    semver: 1.0.0
