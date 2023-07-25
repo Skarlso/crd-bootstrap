@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -71,7 +72,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 
 	latestVersionSemver, err := semver.NewVersion(latestVersion)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to parse current config map version '%s' as semver: %w", latestVersion, err)
+		return false, "", fmt.Errorf("failed to parse current version '%s' as semver: %w", latestVersion, err)
 	}
 
 	constraint, err := semver.NewConstraint(obj.Spec.Version.Semver)
@@ -104,6 +105,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 
 // getLatestVersion calls the GitHub API and returns the latest released version.
 func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
+	logger := log.FromContext(ctx)
 	c := http.DefaultClient
 	if obj.Spec.Source.GitHub.SecretRef != nil {
 		var err error
@@ -120,14 +122,25 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 		baseAPIURL = githubAPIBase
 	}
 
-	latestURL := fmt.Sprintf("%s/repos/%s/%s/latest", baseAPIURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
-	res, err := c.Get(latestURL + "/latest")
+	latestURL := fmt.Sprintf("%s/repos/%s/%s/releases/latest", baseAPIURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
+	logger.Info("checking for latest version under url", "url", latestURL)
+	res, err := c.Get(latestURL)
 	if err != nil {
 		return "", fmt.Errorf("GitHub API call failed: %w", err)
 	}
 
 	if res.Body != nil {
 		defer res.Body.Close()
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		content, err := io.ReadAll(res.Body)
+		if err != nil {
+			logger.Error(fmt.Errorf("failed to read body for further information"), "failed to read body for further information")
+		}
+
+		logger.Error(fmt.Errorf("unexpected status code from github (%d)", res.StatusCode), "unexpected status code from github with message", "message", string(content))
+		return "", fmt.Errorf("GitHub API returned an unexpected status code (%d)", res.StatusCode)
 	}
 
 	type meta struct {
@@ -138,16 +151,22 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 		return "", fmt.Errorf("decoding GitHub API response failed: %w", err)
 	}
 
+	if m.Tag == "" {
+		return "", fmt.Errorf("failed to retrieve latest version, please make sure owner and repo are spelled correctly")
+	}
+
 	return m.Tag, err
 }
 
+// fetch fetches the content
+// TODO: this needs to add autodecompress and auto untar.
 func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) error {
 	baseURL := obj.Spec.Source.GitHub.BaseURL
 	if baseURL == "" {
 		baseURL = githubBase
 	}
 
-	baseURL = fmt.Sprintf("%s/%s/%s", baseURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
+	baseURL = fmt.Sprintf("%s/%s/%s/releases", baseURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
 	downloadURL := fmt.Sprintf("%s/download/%s/%s", baseURL, version, obj.Spec.Source.GitHub.Manifest)
 
 	req, err := http.NewRequest("GET", downloadURL, nil)

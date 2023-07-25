@@ -246,7 +246,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd(s)")
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
 }
 
 func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1.Bootstrap) error {

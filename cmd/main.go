@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -82,7 +83,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	configMapProvider := configmap.NewSource(mgr.GetClient(), nil)
+	githubProvider := github.NewSource(mgr.GetClient(), nil)
+	configMapProvider := configmap.NewSource(mgr.GetClient(), githubProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
