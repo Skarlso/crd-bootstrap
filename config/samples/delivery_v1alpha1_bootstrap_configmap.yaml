@@ -25,3 +25,4 @@ spec:
       namespace: crd-bootstrap-system
   version:
     semver: 1.0.0
+  continueOnValidationError: true

@@ -1,14 +1,120 @@
 # crd-bootstrap
-// TODO(user): Add simple overview of use/purpose
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+![logo](./hack/crd-bootstrap-logo.png)
 
-## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+__NOTE__: This project is heavily in development phase.
 
-### Running on the cluster
+Welcome to CRD bootstrapper. The name explains what this controller does. It keeps CRDs in your cluster up-to-date.
+
+Simple as that. There are three types of bootstrap options (the third is underway).
+
+- URL (soon)
+- ConfigMap
+- GitHub release page
+
+Let's look at each of them.
+
+## URL
+
+(soon)
+
+In this CRD a simple URL can be used with a digest as version. It will fetch the content on every interval, calculate a
+digest, and if it's different, apply it.
+
+## ConfigMap
+
+To install a set of CRDs from a ConfigMap, simply create a ConfigMap like the one under samples/config.
+![configmap](./config/samples/config-map.yaml).
+
+Next, apply a bootstrap CRD:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    configMap:
+      name: crd-bootstrap-sample
+      namespace: crd-bootstrap-system
+  version:
+    semver: 1.0.0
+```
+
+And done. What this does, we'll get to under [But what does it do?](#but-what-does-it-do).
+
+## GitHub
+
+GitHub is largely the same, but 
+
+## But what does it do?
+
+### Constant Version Reconciliation
+
+The semver that we defined is a constraint. A semver constraint. It could be something like `>=v1`. And anything that
+satisfies this constraint gets installed. It only rolls forward, to prevent accidental or intentional upstream version
+rollbacks if a later version is removed.
+
+Given the `interval` it checks every time if there is a newer version satisfying the constraint. The CRD keeps track of
+the last applied version in its status. Once there is a new one, it applies it to the cluster and saves that version.
+
+It also saves attempted versions. If a version is failed to apply, it will still record it as attempted version in its
+status.
+
+### Validation
+
+Before applying a new CRD there are options to make sure that it doesn't break anything by defining a template to check
+against. It would be awesome if it could list all Objects that belong to a CRD but that's just not possible because of various
+security reasons.
+
+To work around that, the user can define a `template` section in the Bootstrap object. It will use that template and
+validate the CRD it's trying to apply to the cluster first against that template:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  template:
+    KrokEvent:
+      apiVersion: delivery.krok.app/v1alpha1
+      kind: KrokEvent
+      metadata:
+        name: krokevent-sample
+      spec:
+        thisfield: bla
+  source:
+    configMap:
+      name: crd-bootstrap-sample
+      namespace: crd-bootstrap-system
+  version:
+    semver: 1.0.0
+```
+
+The template is a map of `Kind`: `Template Yaml`. Here, we have a KrokEvent CRD kind. This fails validation because the
+spec field doesn't have `thisfield` in it. A failed validation will immediately stop reconciliation of the bootstrap
+object. User intervention is required to kick it off again to prevent messing up the cluster.
+
+If it's desired to continue on failures, there is a setting for that. Simply set `continueOnValidationError: true` in the
+Bootstrap's spec.
+
+### Multiple CRDs in single file
+
+A single Bootstrap CRD will point to a single file of ConfigMap. But that file, or ConfigMap may contain multiple CRDs.
+Once a Bootstrap object is deleted it will remove all CRDs that belong to it and were applied by it.
+
+For example, consider the GitHub example. Flux's `install.yaml` contains all their objects. And it contains Deployment
+and Service objects too. Bootstrap doesn't care. It only installs the CRDs from that by using server-side-apply.
+
+The status of the Bootstrap object will keep track of what CRDs it installed.
+
+## Running on the cluster
 1. Install Instances of Custom Resources:
 
 ```sh
@@ -42,7 +148,8 @@ make undeploy
 ```
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+
+Contributions are always welcomed.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
@@ -75,6 +182,16 @@ make manifests
 **NOTE:** Run `make --help` for more information on all potential `make` targets
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+
+### Using Tilt
+
+This project uses [tilt](https://tilt.dev/). For local development, create a kind cluster with:
+
+```
+kind create cluster
+```
+
+... and then simply execute `tilt up`. Hit space, and you should see everything preloaded.
 
 ## License
 

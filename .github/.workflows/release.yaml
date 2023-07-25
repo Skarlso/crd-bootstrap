@@ -1,0 +1,46 @@
+name: Create release
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+env:
+  REGISTRY: ghcr.io
+  DOCKERFILE: ${{ github.workspace }}/goreleaser.dockerfile
+
+jobs:
+  release:
+    permissions:
+      contents: 'write'
+      id-token: 'write'
+      pull-requests: 'read'
+      repository-projects: 'write'
+      packages: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.GIT_CHECKOUT_KEY }}
+      - name: Prepare
+        id: prep
+        run: |
+          VERSION=sha-${GITHUB_SHA::8}
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF/refs\/tags\//}
+          fi
+          echo ::set-output name=BUILD_DATE::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo ::set-output name=VERSION::${VERSION}
+      - name: Generate manifests
+        run: |
+          mkdir -p output
+          kustomize build ./config/default > ./output/install.yaml
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v1
+        with:
+          version: latest
+          args: release --release-notes=docs/release_notes/${{ steps.prep.outputs.VERSION }}.md --skip-validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
