@@ -8,20 +8,25 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
+	"golang.org/x/oauth2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	githubBase    = "https://github.com"
+	githubAPIBase = "https://api.github.com"
+)
+
 // Source provides functionality to fetch a CRD yaml from a GitHub release.
-// TODO: add secrets to fetch github token.
 type Source struct {
-	BaseURL       string
-	ReleaseAPIURL string
-	Client        *http.Client
+	Client *http.Client
 
 	client client.Client
 	next   source.Contract
@@ -34,33 +39,89 @@ func NewSource(client client.Client, next source.Contract) *Source {
 	return &Source{client: client, next: next}
 }
 
-func (s *Source) FetchCRD(ctx context.Context, dir string, source v1alpha1.Source, revision string) (string, error) {
-	if source.GitHub == nil {
+func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
+	if obj.Spec.Source.GitHub == nil {
 		if s.next == nil {
 			return "", fmt.Errorf("github isn't defined and there are no other sources configured")
 		}
 
-		return s.next.FetchCRD(ctx, dir, source, revision)
+		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	if err := s.fetch(ctx, revision, dir); err != nil {
+	if err := s.fetch(ctx, revision, dir, obj); err != nil {
 		return "", fmt.Errorf("failed to fetch CRD: %w", err)
 	}
 
-	return "", nil
+	return filepath.Join(dir, obj.Spec.Source.GitHub.Manifest), nil
 }
 
 func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
-	//TODO implement me
-	panic("implement me")
+	if obj.Spec.Source.GitHub == nil {
+		if s.next == nil {
+			return false, "", fmt.Errorf("github isn't defined and there are no other sources configured")
+		}
+
+		return s.next.HasUpdate(ctx, obj)
+	}
+
+	latestVersion, err := s.getLatestVersion(ctx, obj)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to retrieve latest version for github: %w", err)
+	}
+
+	latestVersionSemver, err := semver.NewVersion(latestVersion)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to parse current config map version '%s' as semver: %w", latestVersion, err)
+	}
+
+	constraint, err := semver.NewConstraint(obj.Spec.Version.Semver)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to parse constraint: %w", err)
+	}
+
+	// If the latest version satisfies the constraint, we check it against the latest applied version if it's set.
+	if constraint.Check(latestVersionSemver) {
+		if obj.Status.LastAppliedRevision != "" {
+			// we know this could be a digest, we don't allow switching forms in a bootstrap.
+			// i.e.: configmap was used as a source, but we switched to URL instead.
+			lastAppliedRevisionSemver, err := semver.NewVersion(obj.Status.LastAppliedRevision)
+			if err != nil {
+				return false, "", fmt.Errorf("failed to parse last applied revision '%s': %w", obj.Status.LastAppliedRevision, err)
+			}
+
+			if lastAppliedRevisionSemver.Equal(latestVersionSemver) || lastAppliedRevisionSemver.GreaterThan(latestVersionSemver) {
+				return false, obj.Status.LastAppliedRevision, nil
+			}
+		}
+
+		// last applied revision was either empty, or lower than the last version that satisfied the constraint.
+		// return update needed and the latest fetched version.
+		return true, latestVersion, nil
+	}
+
+	return false, obj.Status.LastAppliedRevision, nil
 }
 
-// GetLatestVersion calls the GitHub API and returns the latest released version.
-func (s *Source) GetLatestVersion() (string, error) {
+// getLatestVersion calls the GitHub API and returns the latest released version.
+func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
 	c := http.DefaultClient
+	if obj.Spec.Source.GitHub.SecretRef != nil {
+		var err error
+		c, err = s.constructAuthenticatedClient(ctx, obj)
+		if err != nil {
+			return "", fmt.Errorf("failed to construct authenticated client: %w", err)
+		}
+	}
+
 	c.Timeout = 15 * time.Second
 
-	res, err := c.Get(s.ReleaseAPIURL + "/latest")
+	baseAPIURL := obj.Spec.Source.GitHub.BaseAPIURL
+	if baseAPIURL == "" {
+		baseAPIURL = githubAPIBase
+	}
+
+	latestURL := fmt.Sprintf("%s/repos/%s/%s/latest", baseAPIURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
+	res, err := c.Get(latestURL + "/latest")
 	if err != nil {
 		return "", fmt.Errorf("GitHub API call failed: %w", err)
 	}
@@ -80,59 +141,41 @@ func (s *Source) GetLatestVersion() (string, error) {
 	return m.Tag, err
 }
 
-// ExistingVersion calls the GitHub API to confirm the given version does exist.
-func (s *Source) ExistingVersion(version string) (bool, error) {
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
+func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) error {
+	baseURL := obj.Spec.Source.GitHub.BaseURL
+	if baseURL == "" {
+		baseURL = githubBase
 	}
 
-	ghURL := fmt.Sprintf(s.ReleaseAPIURL+"/tags/%s", version)
-	c := http.DefaultClient
-	c.Timeout = 15 * time.Second
+	baseURL = fmt.Sprintf("%s/%s/%s", baseURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
+	downloadURL := fmt.Sprintf("%s/download/%s/%s", baseURL, version, obj.Spec.Source.GitHub.Manifest)
 
-	res, err := c.Get(ghURL)
+	req, err := http.NewRequest("GET", downloadURL, nil)
 	if err != nil {
-		return false, fmt.Errorf("GitHub API call failed: %w", err)
-	}
-
-	if res.Body != nil {
-		defer res.Body.Close()
-	}
-
-	switch res.StatusCode {
-	case http.StatusOK:
-		return true, nil
-	case http.StatusNotFound:
-		return false, nil
-	default:
-		return false, fmt.Errorf("GitHub API returned an unexpected status code (%d)", res.StatusCode)
-	}
-}
-
-func (s *Source) fetch(ctx context.Context, version, dir string) error {
-	ghURL := fmt.Sprintf("%s/latest/download/install.yaml", s.BaseURL)
-	if strings.HasPrefix(version, "v") {
-		ghURL = fmt.Sprintf("%s/download/%s/install.yaml", s.BaseURL, version)
-	}
-
-	req, err := http.NewRequest("GET", ghURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create HTTP request for %s, error: %w", ghURL, err)
+		return fmt.Errorf("failed to create HTTP request for %s, error: %w", downloadURL, err)
 	}
 
 	// download
-	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	client := http.DefaultClient
+	if obj.Spec.Source.GitHub.SecretRef != nil {
+		client, err = s.constructAuthenticatedClient(ctx, obj)
+		if err != nil {
+			return fmt.Errorf("failed to construct authenticated client: %w", err)
+		}
+	}
+
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
-		return fmt.Errorf("failed to download manifests.tar.gz from %s, error: %w", ghURL, err)
+		return fmt.Errorf("failed to download %s from %s, error: %w", obj.Spec.Source.GitHub.Manifest, downloadURL, err)
 	}
 	defer resp.Body.Close()
 
 	// check response
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download manifests.tar.gz from %s, status: %s", ghURL, resp.Status)
+		return fmt.Errorf("failed to download %s from %s, status: %s", obj.Spec.Source.GitHub.Manifest, downloadURL, resp.Status)
 	}
 
-	wf, err := os.OpenFile(filepath.Join(dir, "install.yaml"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	wf, err := os.OpenFile(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
@@ -142,4 +185,21 @@ func (s *Source) fetch(ctx context.Context, version, dir string) error {
 	}
 
 	return nil
+}
+
+func (s *Source) constructAuthenticatedClient(ctx context.Context, obj *v1alpha1.Bootstrap) (*http.Client, error) {
+	secret := &corev1.Secret{}
+	if err := s.client.Get(ctx, types.NamespacedName{Name: obj.Spec.Source.GitHub.SecretRef.Name, Namespace: obj.Namespace}, secret); err != nil {
+		return nil, fmt.Errorf("failed to find secret ref for token: %w", err)
+	}
+
+	token, ok := secret.Data["token"]
+	if !ok {
+		return nil, fmt.Errorf("token key not found in provided secret")
+	}
+
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: string(token)},
+	)
+	return oauth2.NewClient(ctx, ts), nil
 }

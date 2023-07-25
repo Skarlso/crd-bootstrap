@@ -35,6 +35,10 @@ spec:
           spec:
             description: BootstrapSpec defines the desired state of Bootstrap
             properties:
+              continueOnValidationError:
+                description: ContinueOnValidationError will still apply a CRD even
+                  if the validation failed for it.
+                type: boolean
               interval:
                 description: Interval defines the regular interval at which a poll
                   for new version should happen.
@@ -52,26 +56,30 @@ spec:
                       namespace:
                         description: Namespace of the config map.
                         type: string
-                      semver:
-                        description: Semver defines the constraint of the version
-                          of the config map. The version must be provided next to
-                          the raw yaml content.
-                        type: string
                     required:
                     - name
                     - namespace
-                    - semver
                     type: object
                   gitHub:
                     description: GitHub type source.
                     properties:
+                      baseAPIURL:
+                        description: BaseAPIURL is used for the GitHub API url. Defaults
+                          to api.github.com if not defined.
+                        type: string
                       baseURL:
-                        description: BaseURL is used for the GitHub API url. Defaults
+                        description: BaseURL is used for the GitHub url. Defaults
                           to github.com if not defined.
                         type: string
                       manifest:
                         description: Manifest defines the name of the manifest that
                           contains the CRD definitions on the GitHub release page.
+                        type: string
+                      owner:
+                        description: Owner defines the owner of the repository.
+                        type: string
+                      repo:
+                        description: Repo defines the name of the repository.
                         type: string
                       secretRef:
                         description: SecretRef contains a pointed to a Token in case
@@ -85,6 +93,8 @@ spec:
                         x-kubernetes-map-type: atomic
                     required:
                     - manifest
+                    - owner
+                    - repo
                     type: object
                   url:
                     description: URL type source.
@@ -102,8 +112,27 @@ spec:
                     - url
                     type: object
                 type: object
+              template:
+                additionalProperties:
+                  x-kubernetes-preserve-unknown-fields: true
+                description: Template defines a set of values to test a new version
+                  against.
+                type: object
+              version:
+                description: Version defines constraints for sources to check against.
+                  It can either be a semver constraint or a Digest in case of URLs.
+                properties:
+                  digest:
+                    description: Digest defines the digest of the content pointing
+                      to a URL.
+                    type: string
+                  semver:
+                    description: Semver defines a possible constraint like `>=v1`.
+                    type: string
+                type: object
             required:
             - source
+            - version
             type: object
           status:
             description: BootstrapStatus defines the observed state of Bootstrap

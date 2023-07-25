@@ -32,7 +32,6 @@ import (
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -146,7 +145,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// should probably return a file system / single YAML. Because they can be super large, it's
 	// not vise to store it in memory as a buffer.
-	location, err := r.SourceProvider.FetchCRD(ctx, temp, *obj.Spec.Source, version)
+	location, err := r.SourceProvider.FetchCRD(ctx, temp, obj, version)
 	if err != nil {
 		err := fmt.Errorf("failed to fetch source: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "CRDFetchFailed", err.Error())
@@ -190,14 +189,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		applied[o.GetName()]++
 	}
 
-	// Pre-fetch all objects so the verification can happen on an existing list.
-	list := &unstructured.UnstructuredList{}
-	if err := r.List(ctx, list); err != nil {
-
-		return ctrl.Result{}, fmt.Errorf("failed to fetch objects for verification purposes: %w", err)
-	}
-
 	for _, o := range objects {
+		logger.Info("validating the following object against set template data", "name", o.GetName())
 		// Create a CRD out of the content.
 		content, err := o.MarshalJSON()
 		if err != nil {
@@ -209,19 +202,27 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, fmt.Errorf("failed to unmarshal into custom resource definition")
 		}
 
-		eval, _, err := validation.NewSchemaValidator(crd.Spec.Validation)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+		if obj.Spec.Template != nil {
+			// Add checking out the api version from the provided template and only eval against that.
+			for _, v := range crd.Spec.Versions {
+				eval, _, err := validation.NewSchemaValidator(v.Schema)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
 
-		for _, v := range list.Items {
-			content, err := v.MarshalJSON()
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+				if v, ok := obj.Spec.Template[crd.Spec.Names.Kind]; ok {
+					if err := eval.Validate(v).AsError(); err != nil {
+						if !obj.Spec.ContinueOnValidationError {
+							err := fmt.Errorf("failed to validate template for kind: %s: %w", crd.Spec.Names.Kind, err)
+							conditions.MarkFalse(obj, meta.ReadyCondition, "CRDValidationFailed", err.Error())
+							logger.Error(err, "validation failed to the CRD for the provided template")
 
-			if err := eval.Validate(content).AsError(); err != nil {
-				return ctrl.Result{}, fmt.Errorf("failed to validate item: %s: %w", v.GetName(), err)
+							return ctrl.Result{}, nil
+						}
+
+						logger.Error(err, "validation failed for the CRD, but continue is set so we'll ignore this error")
+					}
+				}
 			}
 		}
 	}

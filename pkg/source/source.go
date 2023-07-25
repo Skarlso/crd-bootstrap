@@ -11,7 +11,7 @@ type Contract interface {
 	// FetchCRD fetches the latest CRD if there is an update available.
 	// The returned thing is the location to the CRD. This function should not return the CRD content
 	// as it could be several megabytes large.
-	FetchCRD(ctx context.Context, dir string, source v1alpha1.Source, revision string) (string, error)
+	FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error)
 	// HasUpdate returns true and the version if there is an update available.
 	// In case of a URL this would be the digest. This logic follows this general guide:
 	// - Fetch latest version that satisfies the constraint

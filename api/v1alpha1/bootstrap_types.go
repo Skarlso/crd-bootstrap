@@ -20,6 +20,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,12 +30,24 @@ const (
 
 // GitHub defines a GitHub type source where the CRD is coming from `release` section of a GitHub repository.
 type GitHub struct {
-	// BaseURL is used for the GitHub API url. Defaults to github.com if not defined.
+	// BaseURL is used for the GitHub url. Defaults to github.com if not defined.
 	// +optional
 	BaseURL string `json:"baseURL,omitempty"`
+	// BaseAPIURL is used for the GitHub API url. Defaults to api.github.com if not defined.
+	// +optional
+	BaseAPIURL string `json:"baseAPIURL,omitempty"`
+
+	// Owner defines the owner of the repository.
+	// +required
+	Owner string `json:"owner"`
+
+	// Repo defines the name of the repository.
+	// +required
+	Repo string `json:"repo"`
+
 	// SecretRef contains a pointed to a Token in case the repository is private.
 	// +optional
-	SecretRef v1.LocalObjectReference `json:"secretRef,omitempty"`
+	SecretRef *v1.LocalObjectReference `json:"secretRef,omitempty"`
 	// Manifest defines the name of the manifest that contains the CRD definitions on the GitHub release page.
 	// +required
 	Manifest string `json:"manifest"`
@@ -48,10 +61,6 @@ type ConfigMap struct {
 	// Namespace of the config map.
 	// +required
 	Namespace string `json:"namespace"`
-	// Semver defines the constraint of the version of the config map. The version must be provided next to the
-	// raw yaml content.
-	// +required
-	Semver string `json:"semver"`
 }
 
 // URL holds a URL from which to fetch the CRD. Version is defined through the digest of the content.
@@ -77,6 +86,17 @@ type Source struct {
 	URL *URL `json:"url,omitempty"`
 }
 
+// Version defines options to look at when trying to determine what version is allowed to be fetched / applied.
+type Version struct {
+	// Semver defines a possible constraint like `>=v1`.
+	// +optional
+	Semver string `json:"semver,omitempty"`
+
+	// Digest defines the digest of the content pointing to a URL.
+	// +optional
+	Digest string `json:"digest,omitempty"`
+}
+
 // BootstrapSpec defines the desired state of Bootstrap
 type BootstrapSpec struct {
 	// Interval defines the regular interval at which a poll for new version should happen.
@@ -86,6 +106,19 @@ type BootstrapSpec struct {
 	// SourceRef defines a reference to a source which will provide a CRD based on some contract.
 	// +required
 	Source *Source `json:"source"`
+
+	// Version defines constraints for sources to check against. It can either be a semver constraint or a Digest
+	// in case of URLs.
+	// +required
+	Version Version `json:"version"`
+
+	// Template defines a set of values to test a new version against.
+	// +optional
+	Template map[string]*apiextensionsv1.JSON `json:"template,omitempty"`
+
+	// ContinueOnValidationError will still apply a CRD even if the validation failed for it.
+	// +optional
+	ContinueOnValidationError bool `json:"continueOnValidationError,omitempty"`
 }
 
 // BootstrapStatus defines the observed state of Bootstrap

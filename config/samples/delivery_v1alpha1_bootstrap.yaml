@@ -11,6 +11,14 @@ metadata:
   namespace: crd-bootstrap-system
 spec:
   interval: 10s
+  template:
+    KrokEvent:
+      apiVersion: delivery.krok.app/v1alpha1
+      kind: KrokEvent
+      metadata:
+        name: krokevent-sample
+      spec:
+        thisfield: bla
   source:
     configMap:
       name: crd-bootstrap-sample

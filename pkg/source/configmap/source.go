@@ -33,19 +33,19 @@ func NewSource(client client.Client, next source.Contract) *Source {
 	return &Source{client: client, next: next}
 }
 
-func (s *Source) FetchCRD(ctx context.Context, dir string, source v1alpha1.Source, revision string) (string, error) {
-	if source.ConfigMap == nil {
+func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
+	if obj.Spec.Source.ConfigMap == nil {
 		if s.next == nil {
 			return "", fmt.Errorf("configmap isn't defined and there are no other sources configured")
 		}
 
-		return s.next.FetchCRD(ctx, dir, source, revision)
+		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
 	configMap := &v1.ConfigMap{}
 	if err := s.client.Get(ctx, types.NamespacedName{
-		Name:      source.ConfigMap.Name,
-		Namespace: source.ConfigMap.Namespace,
+		Name:      obj.Spec.Source.ConfigMap.Name,
+		Namespace: obj.Spec.Source.ConfigMap.Namespace,
 	}, configMap); err != nil {
 		return "", fmt.Errorf("failed to find config map: %w", err)
 	}
@@ -98,7 +98,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 		return false, "", fmt.Errorf("failed to parse current config map version '%s' as semver: %w", latestVersion, err)
 	}
 
-	constraint, err := semver.NewConstraint(obj.Spec.Source.ConfigMap.Semver)
+	constraint, err := semver.NewConstraint(obj.Spec.Version.Semver)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to parse constraint: %w", err)
 	}
