@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// readObjects takes a path to a file that contains one or more CRDs and created a list of
+// unstructured objects out of them.
 func readObjects(manifestPath string) ([]*unstructured.Unstructured, error) {
 	fi, err := os.Lstat(manifestPath)
 	if err != nil {
@@ -85,5 +87,6 @@ func newScheme() *apiruntime.Scheme {
 	scheme := apiruntime.NewScheme()
 	_ = apiextensionsv1.AddToScheme(scheme)
 	_ = corev1.AddToScheme(scheme)
+
 	return scheme
 }

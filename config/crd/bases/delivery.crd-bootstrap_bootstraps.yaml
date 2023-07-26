@@ -18,7 +18,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Bootstrap is the Schema for the bootstraps API
+        description: Bootstrap is the Schema for the bootstraps API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: BootstrapSpec defines the desired state of Bootstrap
+            description: BootstrapSpec defines the desired state of Bootstrap.
             properties:
               continueOnValidationError:
                 description: ContinueOnValidationError will still apply a CRD even
@@ -43,9 +43,13 @@ spec:
                 description: Interval defines the regular interval at which a poll
                   for new version should happen.
                 type: string
+              prune:
+                description: Prune will clean up all applied objects once the Bootstrap
+                  object is removed.
+                type: boolean
               source:
-                description: SourceRef defines a reference to a source which will
-                  provide a CRD based on some contract.
+                description: Source defines a reference to a source which will provide
+                  a CRD based on some contract.
                 properties:
                   configMap:
                     description: ConfigMap type source.
@@ -135,9 +139,10 @@ spec:
             - version
             type: object
           status:
-            description: BootstrapStatus defines the observed state of Bootstrap
+            description: BootstrapStatus defines the observed state of Bootstrap.
             properties:
               conditions:
+                description: Conditions contains the conditions of this object.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct

@@ -97,13 +97,13 @@ type Version struct {
 	Digest string `json:"digest,omitempty"`
 }
 
-// BootstrapSpec defines the desired state of Bootstrap
+// BootstrapSpec defines the desired state of Bootstrap.
 type BootstrapSpec struct {
 	// Interval defines the regular interval at which a poll for new version should happen.
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 
-	// SourceRef defines a reference to a source which will provide a CRD based on some contract.
+	// Source defines a reference to a source which will provide a CRD based on some contract.
 	// +required
 	Source *Source `json:"source"`
 
@@ -119,14 +119,19 @@ type BootstrapSpec struct {
 	// ContinueOnValidationError will still apply a CRD even if the validation failed for it.
 	// +optional
 	ContinueOnValidationError bool `json:"continueOnValidationError,omitempty"`
+
+	// Prune will clean up all applied objects once the Bootstrap object is removed.
+	// +optional
+	Prune bool `json:"prune,omitempty"`
 }
 
-// BootstrapStatus defines the observed state of Bootstrap
+// BootstrapStatus defines the observed state of Bootstrap.
 type BootstrapStatus struct {
 	// ObservedGeneration is the last reconciled generation.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// Conditions contains the conditions of this object.
 	// +optional
 	// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].status",description=""
 	// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type==\"Ready\")].message",description=""
@@ -164,7 +169,7 @@ func (in *Bootstrap) GetRequeueAfter() time.Duration {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// Bootstrap is the Schema for the bootstraps API
+// Bootstrap is the Schema for the bootstraps API.
 type Bootstrap struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -175,7 +180,7 @@ type Bootstrap struct {
 
 //+kubebuilder:object:root=true
 
-// BootstrapList contains a list of Bootstrap
+// BootstrapList contains a list of Bootstrap.
 type BootstrapList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

@@ -7,12 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+	"github.com/Skarlso/crd-bootstrap/pkg/source"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
-	"github.com/Skarlso/crd-bootstrap/pkg/source"
 )
 
 var (
@@ -33,6 +32,9 @@ func NewSource(client client.Client, next source.Contract) *Source {
 	return &Source{client: client, next: next}
 }
 
+// FetchCRD fetches the latest CRD if there is an update available.
+// The returned thing is the location to the CRD. This function should not return the CRD content
+// as it could be several megabytes large.
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
 	if obj.Spec.Source.ConfigMap == nil {
 		if s.next == nil {
@@ -65,13 +67,19 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	file := filepath.Join(dir, "crd.yaml")
-	if err := os.WriteFile(file, []byte(content), 0o777); err != nil {
+	if err := os.WriteFile(file, []byte(content), 0o600); err != nil {
 		return "", fmt.Errorf("failed to create crd file from config map: %w", err)
 	}
 
 	return file, nil
 }
 
+// HasUpdate returns true and the version if there is an update available.
+// In case of a URL this would be the digest. This logic follows this general guide:
+// - Fetch latest version that satisfies the constraint
+// - Compare to last applied revision
+// - Return true and the version if there is something to apply
+// - Return false and empty string if there is nothing to apply.
 func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
 	if obj.Spec.Source.ConfigMap == nil {
 		if s.next == nil {

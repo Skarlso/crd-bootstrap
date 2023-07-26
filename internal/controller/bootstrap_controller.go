@@ -32,6 +32,7 @@ import (
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -47,7 +48,7 @@ const (
 	finalizer = "delivery.crd-bootstrap"
 )
 
-// BootstrapReconciler reconciles a Bootstrap object
+// BootstrapReconciler reconciles a Bootstrap object.
 type BootstrapReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -98,8 +99,6 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		return ctrl.Result{}, nil
 	}
-
-	// TODO: Check if CRD has been applied. If yes, do a `reconcileUpdate` of no, `reconcileNormal`.
 
 	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 
@@ -189,56 +188,29 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		applied[o.GetName()]++
 	}
 
-	for _, o := range objects {
-		logger.Info("validating the following object against set template data", "name", o.GetName())
-		// Create a CRD out of the content.
-		content, err := o.MarshalJSON()
-		if err != nil {
-			return ctrl.Result{}, err
+	if err := r.validateObjects(ctx, obj, objects); err != nil {
+		if !obj.Spec.ContinueOnValidationError {
+			conditions.MarkFalse(obj, meta.ReadyCondition, "CRDValidationFailed", err.Error())
+			logger.Error(err, "validation failed to the CRD for the provided template")
+
+			return ctrl.Result{}, nil
 		}
 
-		crd := &apiextensions.CustomResourceDefinition{}
-		if err := yaml.Unmarshal(content, crd); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to unmarshal into custom resource definition")
-		}
-
-		if obj.Spec.Template != nil {
-			// Add checking out the api version from the provided template and only eval against that.
-			for _, v := range crd.Spec.Versions {
-				eval, _, err := validation.NewSchemaValidator(v.Schema)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
-				if v, ok := obj.Spec.Template[crd.Spec.Names.Kind]; ok {
-					if err := eval.Validate(v).AsError(); err != nil {
-						if !obj.Spec.ContinueOnValidationError {
-							err := fmt.Errorf("failed to validate template for kind: %s: %w", crd.Spec.Names.Kind, err)
-							conditions.MarkFalse(obj, meta.ReadyCondition, "CRDValidationFailed", err.Error())
-							logger.Error(err, "validation failed to the CRD for the provided template")
-
-							return ctrl.Result{}, nil
-						}
-
-						logger.Error(err, "validation failed for the CRD, but continue is set so we'll ignore this error")
-					}
-				}
-			}
-		}
+		logger.Error(err, "validation failed for the CRD, but continue is set so we'll ignore this error")
 	}
 
 	if _, err := sm.ApplyAllStaged(ctx, objects, ssa.DefaultApplyOptions()); err != nil {
 		err := fmt.Errorf("failed to apply manifests: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "ApplyingCRDSFailed", err.Error())
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to apply all stages: %w", err)
 	}
 
 	if err = sm.Wait(objects, ssa.DefaultWaitOptions()); err != nil {
 		err := fmt.Errorf("failed to wait for objects to be ready: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "WaitingOnObjectsFailed", err.Error())
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to wait for applied objects: %w", err)
 	}
 
 	obj.Status.LastAppliedCRDNames = applied
@@ -250,6 +222,11 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1.Bootstrap) error {
+	// don't delete anything if prune is not set.
+	if !obj.Spec.Prune {
+		return nil
+	}
+
 	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 	logger := log.FromContext(ctx)
 	logger.Info("cleaning owned CRDS...")
@@ -273,4 +250,43 @@ func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1
 	controllerutil.RemoveFinalizer(obj, finalizer)
 
 	return patchHelper.Patch(ctx, obj)
+}
+
+func (r *BootstrapReconciler) validateObjects(ctx context.Context, obj *v1alpha1.Bootstrap, objects []*unstructured.Unstructured) error {
+	// bail early if there are no templates.
+	if obj.Spec.Template == nil {
+		return nil
+	}
+
+	logger := log.FromContext(ctx)
+
+	for _, o := range objects {
+		logger.Info("validating the following object against set template data", "name", o.GetName())
+		// Create a CRD out of the content.
+		content, err := o.MarshalJSON()
+		if err != nil {
+			return err
+		}
+
+		crd := &apiextensions.CustomResourceDefinition{}
+		if err := yaml.Unmarshal(content, crd); err != nil {
+			return fmt.Errorf("failed to unmarshal into custom resource definition")
+		}
+
+		// Add checking out the api version from the provided template and only eval against that.
+		for _, v := range crd.Spec.Versions {
+			eval, _, err := validation.NewSchemaValidator(v.Schema)
+			if err != nil {
+				return err
+			}
+
+			if v, ok := obj.Spec.Template[crd.Spec.Names.Kind]; ok {
+				if err := eval.Validate(v).AsError(); err != nil {
+					return fmt.Errorf("failed to validate kind %s: %w", crd.Spec.Names.Kind, err)
+				}
+			}
+		}
+	}
+
+	return nil
 }

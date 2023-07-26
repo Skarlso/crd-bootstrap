@@ -124,7 +124,13 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 
 	latestURL := fmt.Sprintf("%s/repos/%s/%s/releases/latest", baseAPIURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
 	logger.Info("checking for latest version under url", "url", latestURL)
-	res, err := c.Get(latestURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, latestURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	res, err := c.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("GitHub API call failed: %w", err)
 	}
@@ -140,6 +146,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 		}
 
 		logger.Error(fmt.Errorf("unexpected status code from github (%d)", res.StatusCode), "unexpected status code from github with message", "message", string(content))
+
 		return "", fmt.Errorf("GitHub API returned an unexpected status code (%d)", res.StatusCode)
 	}
 
@@ -159,7 +166,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 }
 
 // fetch fetches the content
-// TODO: this needs to add autodecompress and auto untar.
+// TODO: this needs to add autodecompress and auto untar in case the content is tar.gz.
 func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) error {
 	baseURL := obj.Spec.Source.GitHub.BaseURL
 	if baseURL == "" {
@@ -169,7 +176,7 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 	baseURL = fmt.Sprintf("%s/%s/%s/releases", baseURL, obj.Spec.Source.GitHub.Owner, obj.Spec.Source.GitHub.Repo)
 	downloadURL := fmt.Sprintf("%s/download/%s/%s", baseURL, version, obj.Spec.Source.GitHub.Manifest)
 
-	req, err := http.NewRequest("GET", downloadURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request for %s, error: %w", downloadURL, err)
 	}
@@ -194,7 +201,7 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 		return fmt.Errorf("failed to download %s from %s, status: %s", obj.Spec.Source.GitHub.Manifest, downloadURL, resp.Status)
 	}
 
-	wf, err := os.OpenFile(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	wf, err := os.Open(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
@@ -220,5 +227,6 @@ func (s *Source) constructAuthenticatedClient(ctx context.Context, obj *v1alpha1
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: string(token)},
 	)
+
 	return oauth2.NewClient(ctx, ts), nil
 }
