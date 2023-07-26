@@ -222,14 +222,15 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1.Bootstrap) error {
+	patchHelper := patch.NewSerialPatcher(obj, r.Client)
+
 	// don't delete anything if prune is not set.
 	if !obj.Spec.Prune {
 		controllerutil.RemoveFinalizer(obj, finalizer)
 
-		return nil
+		return patchHelper.Patch(ctx, obj)
 	}
 
-	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 	logger := log.FromContext(ctx)
 	logger.Info("cleaning owned CRDS...")
 
