@@ -54,7 +54,7 @@ local_resource(
 entrypoint = ['/manager']
 dockerfile = 'tilt.dockerfile'
 docker_build_with_restart(
-    'skarlso/crd-bootstrap-controller',
+    'ghcr.io/skarlso/crd-bootstrap-controller',
     '.',
     dockerfile = dockerfile,
     entrypoint = entrypoint,
