@@ -224,6 +224,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1.Bootstrap) error {
 	// don't delete anything if prune is not set.
 	if !obj.Spec.Prune {
+		controllerutil.RemoveFinalizer(obj, finalizer)
+
 		return nil
 	}
 
