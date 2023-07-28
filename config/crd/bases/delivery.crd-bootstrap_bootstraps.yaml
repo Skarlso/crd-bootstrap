@@ -103,16 +103,21 @@ spec:
                   url:
                     description: URL type source.
                     properties:
-                      digest:
-                        description: Digest must be provided to check for new instances
-                          of the raw YAML content.
-                        type: string
+                      secretRef:
+                        description: SecretRef contains a pointed to a Token in case
+                          the URL isn't public.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
                       url:
                         description: URL defines the URL from which do download the
                           YAML content from.
                         type: string
                     required:
-                    - digest
                     - url
                     type: object
                 type: object
@@ -125,6 +130,8 @@ spec:
               version:
                 description: Version defines constraints for sources to check against.
                   It can either be a semver constraint or a Digest in case of URLs.
+                  If a digest is defined, URL sync will ONLY SYNC that digest. If
+                  the digest differs, it will NOT install it.
                 properties:
                   digest:
                     description: Digest defines the digest of the content pointing
@@ -136,7 +143,6 @@ spec:
                 type: object
             required:
             - source
-            - version
             type: object
           status:
             description: BootstrapStatus defines the observed state of Bootstrap.

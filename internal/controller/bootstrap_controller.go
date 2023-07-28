@@ -77,8 +77,6 @@ func (r *BootstrapReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, err error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("applying request")
-
 	obj := &v1alpha1.Bootstrap{}
 	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -100,6 +98,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	logger.Info("starting reconcile loop")
+
 	patchHelper := patch.NewSerialPatcher(obj, r.Client)
 
 	// AddFinalizer if not present already.
@@ -120,7 +120,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}()
 
-	update, version, err := r.SourceProvider.HasUpdate(ctx, obj)
+	update, revision, err := r.SourceProvider.HasUpdate(ctx, obj)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to check version: %w", err)
 	}
@@ -132,7 +132,9 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
 	}
 
-	obj.Status.LastAttemptedRevision = version
+	logger.Info("fetching CRD content")
+
+	obj.Status.LastAttemptedRevision = revision
 
 	temp, err := os.MkdirTemp("", "crd")
 	if err != nil {
@@ -144,7 +146,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// should probably return a file system / single YAML. Because they can be super large, it's
 	// not vise to store it in memory as a buffer.
-	location, err := r.SourceProvider.FetchCRD(ctx, temp, obj, version)
+	location, err := r.SourceProvider.FetchCRD(ctx, temp, obj, revision)
 	if err != nil {
 		err := fmt.Errorf("failed to fetch source: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "CRDFetchFailed", err.Error())
@@ -214,9 +216,11 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	obj.Status.LastAppliedCRDNames = applied
-	obj.Status.LastAppliedRevision = version
+	obj.Status.LastAppliedRevision = revision
 
 	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd(s)")
+
+	logger.Info("all done")
 
 	return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
 }

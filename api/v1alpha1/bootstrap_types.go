@@ -68,9 +68,9 @@ type URL struct {
 	// URL defines the URL from which do download the YAML content from.
 	// +required
 	URL string `json:"url"`
-	// Digest must be provided to check for new instances of the raw YAML content.
-	// +required
-	Digest string `json:"digest"`
+	// SecretRef contains a pointed to a Token in case the URL isn't public.
+	// +optional
+	SecretRef *v1.LocalObjectReference `json:"secretRef,omitempty"`
 }
 
 // Source defines options from where to fetch CRD content.
@@ -108,9 +108,10 @@ type BootstrapSpec struct {
 	Source *Source `json:"source"`
 
 	// Version defines constraints for sources to check against. It can either be a semver constraint or a Digest
-	// in case of URLs.
-	// +required
-	Version Version `json:"version"`
+	// in case of URLs. If a digest is defined, URL sync will ONLY SYNC that digest. If the digest
+	// differs, it will NOT install it.
+	// +optional
+	Version Version `json:"version,omitempty"`
 
 	// Template defines a set of values to test a new version against.
 	// +optional

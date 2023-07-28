@@ -8,7 +8,7 @@ Welcome to CRD bootstrapper. The name explains what this controller does. It kee
 
 Simple as that. There are three types of bootstrap options (the third is underway).
 
-- URL (soon)
+- URL
 - ConfigMap
 - GitHub release page
 
@@ -16,10 +16,51 @@ Let's look at each of them.
 
 ## URL
 
-(soon)
+There are two ways to fetch CRDs from a URL.
 
-In this CRD a simple URL can be used with a digest as version. It will fetch the content on every interval, calculate a
-digest, and if it's different, apply it.
+First, by defining a Digest. If a digest is defined together with a URL the operator will _only_ apply the content that
+corresponds to the digest.
+
+For example:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    url:
+      url: https://raw.githubusercontent.com/krok-o/operator/main/config/crd/bases/delivery.krok.app_krokevents.yaml
+  version:
+    digest: 7162957068d512154ed353d31b9a0a5a9ff148b4611bd85ba704467a4fcd101a
+```
+
+This object will only apply this CRD when the digest matches with the fetched content. The digest is a sum256 digest.
+You should be able to produce it by running:
+
+```
+sha256sum < krok_event_crd.yaml
+```
+
+The second options is to omit this digest. In which case it will keep applying the CRD if there is a new "version"
+available. This means, every interval it will download the content and create a digest from it. If that digest does not
+match with the last applied digest, it will apply the content.
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    url:
+      url: https://raw.githubusercontent.com/krok-o/operator/main/config/crd/bases/delivery.krok.app_krokevents.yaml
+```
 
 ## ConfigMap
 

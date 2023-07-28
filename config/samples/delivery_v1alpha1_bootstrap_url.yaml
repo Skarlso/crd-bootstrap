@@ -1,0 +1,10 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    url:
+      url: https://raw.githubusercontent.com/krok-o/operator/main/config/crd/bases/delivery.krok.app_krokevents.yaml

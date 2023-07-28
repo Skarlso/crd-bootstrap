@@ -20,23 +20,20 @@ import (
 	"flag"
 	"os"
 
-	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
-	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	deliveryv1alpha1 "github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+	"github.com/Skarlso/crd-bootstrap/internal/controller"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/url"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	deliveryv1alpha1 "github.com/Skarlso/crd-bootstrap/api/v1alpha1"
-	"github.com/Skarlso/crd-bootstrap/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -83,7 +80,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	githubProvider := github.NewSource(mgr.GetClient(), nil)
+	urlProvider := url.NewSource(mgr.GetClient(), nil)
+	githubProvider := github.NewSource(mgr.GetClient(), urlProvider)
 	configMapProvider := configmap.NewSource(mgr.GetClient(), githubProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:         mgr.GetClient(),
