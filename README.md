@@ -2,11 +2,9 @@
 
 ![logo](./hack/crd-bootstrap-logo.png)
 
-__NOTE__: This project is heavily in development phase.
-
 Welcome to CRD bootstrapper. The name explains what this controller does. It keeps CRDs in your cluster up-to-date.
 
-Simple as that. There are three types of bootstrap options (the third is underway).
+Simple, as that. There are three types of bootstrap options.
 
 - URL
 - ConfigMap
@@ -105,7 +103,7 @@ the last applied version in its status. Once there is a new one, it applies it t
 It also saves attempted versions. If a version is failed to apply, it will still record it as attempted version in its
 status.
 
-### Validation
+## Validation
 
 Before applying a new CRD there are options to make sure that it doesn't break anything by defining a template to check
 against. It would be awesome if it could list all Objects that belong to a CRD but that's just not possible because of various
@@ -145,7 +143,7 @@ object. User intervention is required to kick it off again to prevent messing up
 If it's desired to continue on failures, there is a setting for that. Simply set `continueOnValidationError: true` in the
 Bootstrap's spec.
 
-### Multiple CRDs in single file
+## Multiple CRDs in a single file
 
 A single Bootstrap CRD will point to a single file of ConfigMap. But that file, or ConfigMap may contain multiple CRDs.
 Once a Bootstrap object is deleted it will remove all CRDs that belong to it and were applied by it.
@@ -154,51 +152,17 @@ For example, consider the GitHub example. Flux's `install.yaml` contains all the
 and Service objects too. Bootstrap doesn't care. It only installs the CRDs from that by using server-side-apply.
 
 The status of the Bootstrap object will keep track of what CRDs it installed.
-
-## Running on the cluster
-1. Install Instances of Custom Resources:
-
-```sh
-kubectl apply -f config/samples/
-```
-
-2. Build and push your image to the location specified by `IMG`:
-
-```sh
-make docker-build docker-push IMG=<some-registry>/crd-bootstrap:tag
-```
-
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
-make deploy IMG=<some-registry>/crd-bootstrap:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
-```sh
-make undeploy
-```
-
 ## Contributing
 
 Contributions are always welcomed.
 
-### How it works
+## How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
 which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
 
-### Test It Out
+## Test It Out
 1. Install the CRDs into the cluster:
 
 ```sh
@@ -213,7 +177,7 @@ make run
 
 **NOTE:** You can also run this in one step by running: `make install run`
 
-### Modifying the API definitions
+## Modifying the API definitions
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
 
 ```sh
@@ -224,7 +188,7 @@ make manifests
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
-### Using Tilt
+## Using Tilt
 
 This project uses [tilt](https://tilt.dev/). For local development, create a kind cluster with:
 
