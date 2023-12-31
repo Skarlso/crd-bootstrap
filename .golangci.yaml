@@ -12,7 +12,7 @@ linters:
   disable:
     # We are working on it
     - wrapcheck
-
+    - depguard
     # Logical next step
     - forcetypeassert  # Priority: that can lead to serious crashes.
     - exportloopref
