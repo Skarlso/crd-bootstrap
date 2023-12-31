@@ -282,7 +282,7 @@ func (r *BootstrapReconciler) validateObjects(ctx context.Context, obj *v1alpha1
 
 		// Add checking out the api version from the provided template and only eval against that.
 		for _, v := range crd.Spec.Versions {
-			eval, _, err := validation.NewSchemaValidator(v.Schema)
+			eval, _, err := validation.NewSchemaValidator(v.Schema.OpenAPIV3Schema)
 			if err != nil {
 				return err
 			}
