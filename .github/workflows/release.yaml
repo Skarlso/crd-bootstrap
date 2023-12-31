@@ -35,7 +35,7 @@ jobs:
           mkdir -p output
           kustomize build ./config/default > ./output/install.yaml
       - name: Log in to the Container registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
