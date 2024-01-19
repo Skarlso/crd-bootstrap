@@ -25,27 +25,22 @@ create_helm_chart() {
   rm values.yaml
   cd ../helm_temp || exit
 
-  # Set chart app versiom to release version
-  RELEASE=$(ls -t ../../docs/release_notes | head -1 | sed "s/v//g" | sed "s/.md//g")
-
   case "${1}" in
     "helm" )
       #mac
       split -p "^---$" "install.yaml" "helm_";
-      sed -i "" "s/appVersion: .*/appVersion: \"${RELEASE}\"/g" "../${CONTROLLER}/Chart.yaml"
-
       ;;
     "output" )
       #ubuntu
       csplit "install.yaml" "/^---$/" {*} --prefix "helm_" -q;
-      sed -i "s/appVersion: .*/appVersion: \"${RELEASE}\"/g" "../${CONTROLLER}/Chart.yaml"
       ;;
     * )
       exit
       ;;
   esac
+
   rm install.yaml
-  #Move into crds & templates folders after renaming
+  # Move into crds & templates folders after renaming
   HELM_FILES=($(ls ))
   for input in "${HELM_FILES[@]}";  do
       FILENAME=$(cat "${input}" | grep '^  name: ' | head -1 | sed 's/name: //g' | sed 's/\./_/g' | sed 's/ //g')
