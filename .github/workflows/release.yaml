@@ -42,8 +42,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Helm
         uses: azure/setup-helm@v3
-      - name: Create Helm Chart
-        run: make create-helmchart-release
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
@@ -54,5 +52,5 @@ jobs:
       - name: Build and release the helm charts
         run: |
           helm registry login ghcr.io -u skarlso -p ${{ secrets.GITHUB_TOKEN }}
-          helm package --version ${{ steps.prep.outputs.VERSION }} --app-version ${{ steps.prep.outputs.VERSION }} ./output/crd-bootstrap
+          helm package --version ${{ steps.prep.outputs.VERSION }} --app-version ${{ steps.prep.outputs.VERSION }} ./crd-bootstrap
           helm push ${{ github.event.repository.name }}-${{ steps.prep.outputs.VERSION }}.tgz oci://ghcr.io/skarlso/helm
