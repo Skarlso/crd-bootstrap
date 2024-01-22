@@ -2,5 +2,5 @@ apiVersion: v2
 name: crd-bootstrap
 description: This is the official Helm chart for the Project crd-bootstrap.
 type: application
-version: 0.1.0 # will be replaced by the publishing workflow.
-appVersion: "1.16.0" # will be replaced by the publishing workflow.
+version: 0.0.0 # will be replaced by the publishing workflow.
+appVersion: "0.0.0" # will be replaced by the publishing workflow.

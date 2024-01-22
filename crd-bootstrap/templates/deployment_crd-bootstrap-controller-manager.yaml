@@ -29,8 +29,8 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: ghcr.io/skarlso/crd-bootstrap-controller:latest
-        imagePullPolicy: Always
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -55,3 +55,15 @@ spec:
         runAsNonRoot: true
       serviceAccountName: crd-bootstrap-controller-manager
       terminationGracePeriodSeconds: 10
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

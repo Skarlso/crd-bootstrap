@@ -4,7 +4,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io
+  repository: ghcr.io/skarlso/crd-bootstrap-controller
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -15,3 +15,8 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
+# optional values defined by the user
+nodeSelector: {}
+tolerations: []
+affinity: {}
