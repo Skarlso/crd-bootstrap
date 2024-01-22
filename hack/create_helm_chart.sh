@@ -51,6 +51,21 @@ create_helm_chart() {
           mv ${input} ../${CONTROLLER}/templates/${TYPE}_${FILENAME}.yaml
       fi
   done
+
+  case "${1}" in
+    "helm" )
+      #mac
+      find "../${CONTROLLER}/templates" -type f -name '*.yaml' -exec sed -i "" "s/namespace: .*/namespace: {{ .Release.Namespace }}/g" {} \;
+      ;;
+    "output" )
+      #ubuntu
+      find "../${CONTROLLER}/templates" -type f -name '*.yaml' -exec sed -i "s/namespace: .*/namespace: {{ .Release.Namespace }}/g" {} \;
+      ;;
+    * )
+      exit
+      ;;
+  esac
+
   cd ..
   rm -rf helm_temp
 }
