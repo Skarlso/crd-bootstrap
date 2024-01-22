@@ -62,4 +62,4 @@ jobs:
         with:
           charts_dir: output/crd-bootstrap
           skip_existing: true
-          charts_repo_url: oci://ghcr.io/skarlso/crd-bootstrap/chart
+          charts_repo_url: oci://ghcr.io/skarlso/crd-bootstrap-controller/chart
