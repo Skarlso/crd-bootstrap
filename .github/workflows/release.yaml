@@ -47,3 +47,19 @@ jobs:
           args: release --release-notes=docs/release_notes/${{ steps.prep.outputs.VERSION }}.md --skip-validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+      - name: Create Helm Chart
+        run: make create-helmchart-release
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
+        if: |
+          github.ref == 'refs/heads/main' ||
+          startsWith(github.ref, 'refs/heads/release-')
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          CR_RELEASE_NAME_TEMPLATE: "helm-chart-{{ .Version }}"
+        with:
+          charts_dir: output/crd-bootstrap
+          skip_existing: true
+          charts_repo_url: oci://ghcr.io/skarlso/crd-bootstrap-controller/chart

@@ -18,10 +18,12 @@ archives:
 release:
   extra_files:
     - glob: output/install.yaml
+    - glob: output/helm_chart.tar.gz
 checksum:
   name_template: 'checksums.txt'
   extra_files:
     - glob: output/install.yaml
+    - glob: output/helm_chart.tar.gz
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 changelog:
