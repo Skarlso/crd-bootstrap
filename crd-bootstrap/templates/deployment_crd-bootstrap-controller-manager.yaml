@@ -13,7 +13,7 @@ metadata:
   name: crd-bootstrap-controller-manager
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       control-plane: crd-bootstrap-controller-manager
