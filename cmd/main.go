@@ -31,12 +31,11 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	//+kubebuilder:scaffold:imports
-
 	deliveryv1alpha1 "github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/internal/controller"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/helm"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/url"
 )
 
@@ -90,10 +89,11 @@ func main() {
 	urlProvider := url.NewSource(mgr.GetClient(), nil)
 	githubProvider := github.NewSource(mgr.GetClient(), urlProvider)
 	configMapProvider := configmap.NewSource(mgr.GetClient(), githubProvider)
+	helmProvider := helm.NewSource(mgr.GetClient(), configMapProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
-		SourceProvider: configMapProvider,
+		SourceProvider: helmProvider,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Bootstrap")
 		os.Exit(1)

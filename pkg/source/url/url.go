@@ -129,6 +129,8 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
 
+	defer wf.Close()
+
 	if _, err := io.Copy(wf, resp.Body); err != nil {
 		return fmt.Errorf("failed to write to temp file: %w", err)
 	}

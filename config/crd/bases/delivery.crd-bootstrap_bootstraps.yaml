@@ -100,6 +100,27 @@ spec:
                     - owner
                     - repo
                     type: object
+                  helm:
+                    description: Helm type source.
+                    properties:
+                      chartReference:
+                        description: URL is the location of the helm chart. The scheme
+                          must be either HTTP or OCI. [chart URL | repo/chartname]
+                        type: string
+                      secretRef:
+                        description: Insecure defines SecretRef contains a pointer
+                          to a secret that contains any needed credentials to access
+                          the helm repository.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    required:
+                    - chartReference
+                    type: object
                   url:
                     description: URL type source.
                     properties:

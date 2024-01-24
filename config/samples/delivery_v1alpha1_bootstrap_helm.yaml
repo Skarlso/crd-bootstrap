@@ -1,0 +1,12 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-helm
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    helm:
+      chartReference: oci://ghcr.io/skarlso/helm/crd-bootstrap
+  version:
+    semver: v0.4.2
