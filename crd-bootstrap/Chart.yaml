@@ -4,3 +4,77 @@ description: This is the official Helm chart for the Project crd-bootstrap.
 type: application
 version: 0.0.0 # will be replaced by the publishing workflow.
 appVersion: "0.0.0" # will be replaced by the publishing workflow.
+icon: https://raw.githubusercontent.com/Skarlso/crd-bootstrap/main/hack/crd-bootstrap-logo.png
+home: https://github.com/Skarlso/crd-bootstrap
+maintainers:
+  - name: Gergely Brautigam
+    email: skarlso777@gmail.com
+    url: https://github.com/Skarlso
+
+keywords:
+  - crd
+  - controller
+  - crd-controller
+  - kubernetes
+
+annotations:
+  artifacthub.io/links: |
+    - name: Main Homepage
+      url: https://github.com/Skarlso/crd-bootstrap
+
+  artifacthub.io/crds: |
+    - kind: Bootstrap
+      version: v1
+      name: bootstrap
+      displayName: Bootstrap
+      description: Define a CRD to bootstrap in a given cluster.
+
+  artifacthub.io/crdsExamples: |
+    - apiVersion: delivery.crd-bootstrap/v1alpha1
+      kind: Bootstrap
+      metadata:
+        name: bootstrap-sample-github
+        namespace: crd-bootstrap-system
+      spec:
+        interval: 10s
+        source:
+          gitHub:
+            owner: fluxcd
+            repo: flux2
+            manifest: install.yaml
+        version:
+          semver: v2.0.1
+    - apiVersion: delivery.crd-bootstrap/v1alpha1
+      kind: Bootstrap
+      metadata:
+        name: bootstrap-sample-url
+        namespace: crd-bootstrap-system
+      spec:
+        interval: 10s
+        source:
+          url:
+            url: https://raw.githubusercontent.com/krok-o/operator/main/config/crd/bases/delivery.krok.app_krokevents.yaml
+    - apiVersion: delivery.crd-bootstrap/v1alpha1
+      kind: Bootstrap
+      metadata:
+        name: bootstrap-sample-configmap
+        namespace: crd-bootstrap-system
+      spec:
+        interval: 10s
+        # template is used for validating a given CRD _BEFORE_ it gets applied.
+        template:
+          KrokEvent:
+            apiVersion: delivery.krok.app/v1alpha1
+            kind: KrokEvent
+            metadata:
+              name: krokevent-sample
+            spec:
+              thisfield: value
+        source:
+          configMap:
+            name: crd-bootstrap-sample
+            namespace: crd-bootstrap-system
+        version:
+          semver: 1.0.0
+        # ignore validation errors and apply the CRD anyways.
+        continueOnValidationError: true
