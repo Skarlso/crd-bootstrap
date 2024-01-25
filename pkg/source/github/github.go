@@ -165,8 +165,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	return m.Tag, err
 }
 
-// fetch fetches the content
-// TODO: this needs to add autodecompress and auto untar in case the content is tar.gz.
+// fetch fetches the content.
 func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) error {
 	baseURL := obj.Spec.Source.GitHub.BaseURL
 	if baseURL == "" {
