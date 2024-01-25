@@ -55,11 +55,14 @@ type GitHub struct {
 
 // Helm defines a Helm type source where the CRD is coming from a helm release with a version.
 type Helm struct {
-	// URL is the location of the helm chart.
+	// ChartReference is the location of the helm chart.
 	// The scheme must be either HTTP or OCI.
 	// [chart URL | repo/chartname]
 	// +required
 	ChartReference string `json:"chartReference"`
+	// ChartName defines the name of the chart to fetch from the reference URL.
+	// +required
+	ChartName string `json:"chartName"`
 	// Insecure defines
 	// SecretRef contains a pointer to a secret that contains any needed credentials to access the helm repository.
 	// +optional

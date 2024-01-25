@@ -3,13 +3,21 @@ package helm
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	"oras.land/oras-go/pkg/registry/remote"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -18,6 +26,8 @@ import (
 )
 
 type Source struct {
+	Client *http.Client
+
 	client client.Client
 	next   source.Contract
 }
@@ -25,8 +35,8 @@ type Source struct {
 var _ source.Contract = &Source{}
 
 // NewSource creates a new Helm handling Source.
-func NewSource(client client.Client, next source.Contract) *Source {
-	return &Source{client: client, next: next}
+func NewSource(c *http.Client, client client.Client, next source.Contract) *Source {
+	return &Source{Client: c, client: client, next: next}
 }
 
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
@@ -43,7 +53,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	opts := []registry.ClientOption{
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptWriter(os.Stderr),
-		registry.ClientOptPlainHTTP(),
+		registry.ClientOptPlainHTTP(), // this needs to be configurable with cred files
 	}
 
 	// Create a new registry client
@@ -52,7 +62,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return "", fmt.Errorf("failed to create registry: %w", err)
 	}
 
-	tempHelm := filepath.Join(dir, "temp")
+	tempHelm := filepath.Join(dir, "helm-temp")
 	if err := os.MkdirAll(tempHelm, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create temp helm folder: %w", err)
 	}
@@ -61,10 +71,13 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 
 	client := action.NewPullWithOpts(action.WithConfig(new(action.Configuration)))
 	client.Version = revision
-	client.Untar = true
+
 	client.DestDir = tempHelm
 	client.Settings = &cli.EnvSettings{}
 	client.SetRegistryClient(registryClient)
+	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
+		client.Untar = true
+	}
 
 	output, err := client.Run(obj.Spec.Source.Helm.ChartReference)
 	if err != nil {
@@ -106,6 +119,158 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	return filepath.Join(dir, "crds.yaml"), nil
 }
 
+type entry struct {
+	Version string `yaml:"version"`
+}
+
+// results parses the index file for https helm repos to get latest versions
+// doing this because helm's search requires a lot of work and fiddling
+// by adding repos first, then updating them, THEN run search.
+// In case of a large index file this might get tricky.
+type results struct {
+	APIVersion string             `yaml:"apiVersion"`
+	Entries    map[string][]entry `yaml:"entries"`
+}
+
 func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
-	return true, obj.Spec.Version.Semver, nil
+	if obj.Spec.Source.Helm == nil {
+		if s.next == nil {
+			return false, "", fmt.Errorf("helm isn't defined and there are no other sources configured")
+		}
+
+		return s.next.HasUpdate(ctx, obj)
+	}
+
+	var (
+		versions []string
+		err      error
+	)
+	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
+		versions, err = s.findVersionsForOCIRegistry(obj.Spec.Source.Helm.ChartReference)
+		if err != nil {
+			return false, "", err
+		}
+	} else {
+		versions, err = s.findVersionsForHTTPRepository(ctx, obj.Spec.Source.Helm.ChartReference, obj.Spec.Source.Helm.ChartName)
+		if err != nil {
+			return false, "", err
+		}
+	}
+
+	latestRemoteVersion := s.getLatestVersion(versions)
+	latestVersionSemver, err := semver.NewVersion(latestRemoteVersion)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to parse current version '%s' as semver: %w", latestRemoteVersion, err)
+	}
+
+	constraint, err := semver.NewConstraint(obj.Spec.Version.Semver)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to parse constraint: %w", err)
+	}
+
+	// If the latest version satisfies the constraint, we check it against the latest applied version if it's set.
+	if constraint.Check(latestVersionSemver) {
+		if obj.Status.LastAppliedRevision != "" {
+			// we know this could be a digest, we don't allow switching forms in a bootstrap.
+			// i.e.: configmap was used as a source, but we switched to URL instead.
+			lastAppliedRevisionSemver, err := semver.NewVersion(obj.Status.LastAppliedRevision)
+			if err != nil {
+				return false, "", fmt.Errorf("failed to parse last applied revision '%s': %w", obj.Status.LastAppliedRevision, err)
+			}
+
+			if lastAppliedRevisionSemver.Equal(latestVersionSemver) || lastAppliedRevisionSemver.GreaterThan(latestVersionSemver) {
+				return false, obj.Status.LastAppliedRevision, nil
+			}
+		}
+
+		// last applied revision was either empty, or lower than the last version that satisfied the constraint.
+		// return update needed and the latest fetched version.
+		return true, latestRemoteVersion, nil
+	}
+
+	return false, obj.Status.LastAppliedRevision, nil
+}
+
+func (s *Source) getLatestVersion(versions []string) string {
+	semvers := make([]*semver.Version, 0)
+	for _, v := range versions {
+		semv, err := semver.NewVersion(v)
+		if err != nil {
+			// log and continue
+			continue
+		}
+
+		semvers = append(semvers, semv)
+	}
+
+	sort.Slice(semvers, func(i, j int) bool {
+		return semvers[i].GreaterThan(semvers[j])
+	})
+
+	return semvers[0].Original()
+}
+
+func (s *Source) findVersionsForOCIRegistry(chartRef string) ([]string, error) {
+	var versions []string
+	// helm's own way of doing this just doesn't work.
+	src, err := remote.NewRepository(strings.TrimPrefix(chartRef, "oci://"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct repository: %w", err)
+	}
+	if err := src.Tags(context.Background(), func(tags []string) error {
+		versions = append(versions, tags...)
+
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("failed to fetch tags: %w", err)
+	}
+
+	return versions, nil
+}
+
+func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, chartName string) ([]string, error) {
+	u, err := url.JoinPath(chartRef, "index.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to join path: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct request: %w", err)
+	}
+
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("status code returned is invalid %d", resp.StatusCode)
+	}
+
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &results{}
+	if err := yaml.Unmarshal(content, &res); err != nil {
+		return nil, err
+	}
+
+	v, ok := res.Entries[chartName]
+	if !ok {
+		return nil, fmt.Errorf("no charts found in registry with name %s", chartName)
+	}
+
+	versions := make([]string, 0, len(v))
+	for _, e := range v {
+		versions = append(versions, e.Version)
+	}
+
+	return versions, nil
 }

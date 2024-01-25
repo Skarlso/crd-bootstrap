@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -86,10 +87,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	urlProvider := url.NewSource(mgr.GetClient(), nil)
-	githubProvider := github.NewSource(mgr.GetClient(), urlProvider)
+	c := http.DefaultClient
+	urlProvider := url.NewSource(c, mgr.GetClient(), nil)
+	githubProvider := github.NewSource(c, mgr.GetClient(), urlProvider)
 	configMapProvider := configmap.NewSource(mgr.GetClient(), githubProvider)
-	helmProvider := helm.NewSource(mgr.GetClient(), configMapProvider)
+	helmProvider := helm.NewSource(c, mgr.GetClient(), configMapProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),

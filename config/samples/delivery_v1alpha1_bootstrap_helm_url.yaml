@@ -7,7 +7,7 @@ spec:
   interval: 10s
   source:
     helm:
-      chartReference: oci://ghcr.io/skarlso/helm/crd-bootstrap
-      chartName: crd-bootstrap
+      chartReference: https://ibm.github.io/helm101/
+      chartName: guestbook
   version:
-    semver: v0.4.2
+    semver: 0.2.1
