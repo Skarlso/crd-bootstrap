@@ -157,7 +157,13 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 		}
 	}
 
-	latestRemoteVersion := s.getLatestVersion(versions)
+	// get latest version that applies to the constraint.
+	constrains, err := semver.NewConstraint(obj.Spec.Version.Semver)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to build constraint: %w", err)
+	}
+
+	latestRemoteVersion := s.getLatestVersion(versions, constrains)
 	latestVersionSemver, err := semver.NewVersion(latestRemoteVersion)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to parse current version '%s' as semver: %w", latestRemoteVersion, err)
@@ -191,7 +197,8 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 	return false, obj.Status.LastAppliedRevision, nil
 }
 
-func (s *Source) getLatestVersion(versions []string) string {
+// getLatestVersion selects all the versions that match the constraint and gets back the latest.
+func (s *Source) getLatestVersion(versions []string, constraint *semver.Constraints) string {
 	semvers := make([]*semver.Version, 0)
 	for _, v := range versions {
 		semv, err := semver.NewVersion(v)
@@ -200,7 +207,9 @@ func (s *Source) getLatestVersion(versions []string) string {
 			continue
 		}
 
-		semvers = append(semvers, semv)
+		if constraint.Check(semv) {
+			semvers = append(semvers, semv)
+		}
 	}
 
 	sort.Slice(semvers, func(i, j int) bool {
