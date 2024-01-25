@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -31,12 +32,11 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	//+kubebuilder:scaffold:imports
-
 	deliveryv1alpha1 "github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/internal/controller"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/helm"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/url"
 )
 
@@ -87,13 +87,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	urlProvider := url.NewSource(mgr.GetClient(), nil)
-	githubProvider := github.NewSource(mgr.GetClient(), urlProvider)
+	c := http.DefaultClient
+	urlProvider := url.NewSource(c, mgr.GetClient(), nil)
+	githubProvider := github.NewSource(c, mgr.GetClient(), urlProvider)
 	configMapProvider := configmap.NewSource(mgr.GetClient(), githubProvider)
+	helmProvider := helm.NewSource(c, mgr.GetClient(), configMapProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
-		SourceProvider: configMapProvider,
+		SourceProvider: helmProvider,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Bootstrap")
 		os.Exit(1)

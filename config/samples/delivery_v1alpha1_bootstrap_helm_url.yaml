@@ -1,0 +1,13 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-helm
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    helm:
+      chartReference: https://ibm.github.io/helm101/
+      chartName: guestbook
+  version:
+    semver: 0.2.1

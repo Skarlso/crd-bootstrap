@@ -36,8 +36,8 @@ type Source struct {
 var _ source.Contract = &Source{}
 
 // NewSource creates a new GitHub handling Source.
-func NewSource(client client.Client, next source.Contract) *Source {
-	return &Source{client: client, next: next}
+func NewSource(c *http.Client, client client.Client, next source.Contract) *Source {
+	return &Source{Client: c, client: client, next: next}
 }
 
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
@@ -165,8 +165,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	return m.Tag, err
 }
 
-// fetch fetches the content
-// TODO: this needs to add autodecompress and auto untar in case the content is tar.gz.
+// fetch fetches the content.
 func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) error {
 	baseURL := obj.Spec.Source.GitHub.BaseURL
 	if baseURL == "" {
@@ -182,7 +181,7 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 	}
 
 	// download
-	client := http.DefaultClient
+	client := s.Client
 	if obj.Spec.Source.GitHub.SecretRef != nil {
 		client, err = s.constructAuthenticatedClient(ctx, obj)
 		if err != nil {
@@ -190,7 +189,7 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 		}
 	}
 
-	resp, err := client.Do(req.WithContext(ctx))
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download %s from %s, error: %w", obj.Spec.Source.GitHub.Manifest, downloadURL, err)
 	}

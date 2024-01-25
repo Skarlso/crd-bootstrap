@@ -29,8 +29,8 @@ type Source struct {
 var _ source.Contract = &Source{}
 
 // NewSource creates a new GitHub handling Source.
-func NewSource(client client.Client, next source.Contract) *Source {
-	return &Source{client: client, next: next}
+func NewSource(c *http.Client, client client.Client, next source.Contract) *Source {
+	return &Source{Client: c, client: client, next: next}
 }
 
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
@@ -105,7 +105,7 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 	}
 
 	// download
-	c := http.DefaultClient
+	c := s.Client
 	if obj.Spec.Source.URL.SecretRef != nil {
 		c, err = s.constructAuthenticatedClient(ctx, obj)
 		if err != nil {
@@ -113,7 +113,7 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 		}
 	}
 
-	resp, err := c.Do(req.WithContext(ctx))
+	resp, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download content from %s, error: %w", downloadURL, err)
 	}
@@ -128,6 +128,8 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
+
+	defer wf.Close()
 
 	if _, err := io.Copy(wf, resp.Body); err != nil {
 		return fmt.Errorf("failed to write to temp file: %w", err)

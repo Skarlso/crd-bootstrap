@@ -53,6 +53,22 @@ type GitHub struct {
 	Manifest string `json:"manifest"`
 }
 
+// Helm defines a Helm type source where the CRD is coming from a helm release with a version.
+type Helm struct {
+	// ChartReference is the location of the helm chart.
+	// The scheme must be either HTTP or OCI.
+	// [chart URL | repo/chartname]
+	// +required
+	ChartReference string `json:"chartReference"`
+	// ChartName defines the name of the chart to fetch from the reference URL.
+	// +required
+	ChartName string `json:"chartName"`
+	// Insecure defines
+	// SecretRef contains a pointer to a secret that contains any needed credentials to access the helm repository.
+	// +optional
+	SecretRef *v1.LocalObjectReference `json:"secretRef,omitempty"`
+}
+
 // ConfigMap defines a reference to a configmap which hold the CRD information. Version is taken from a version field.
 type ConfigMap struct {
 	// Name of the config map.
@@ -78,6 +94,9 @@ type Source struct {
 	// GitHub type source.
 	// +optional
 	GitHub *GitHub `json:"gitHub,omitempty"`
+	// Helm type source.
+	// +optional
+	Helm *Helm `json:"helm,omitempty"`
 	// ConfigMap type source.
 	// +optional
 	ConfigMap *ConfigMap `json:"configMap,omitempty"`
