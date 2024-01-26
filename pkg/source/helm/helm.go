@@ -261,9 +261,22 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, ch
 		defer resp.Body.Close()
 	}
 
-	content, err := io.ReadAll(resp.Body)
+	// leaving dir empty will create a temp dir
+	tempFile, err := os.CreateTemp("", "index.yaml")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create temp file for response: %w", err)
+	}
+
+	defer tempFile.Close()
+
+	if _, err := io.Copy(tempFile, resp.Body); err != nil {
+		return nil, fmt.Errorf("failed to copy content to file: %w", err)
+	}
+
+	// NOTE: This can be improved with a streaming reader if the need really arises.
+	content, err := os.ReadFile(tempFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read downloaded file: %w", err)
 	}
 
 	res := &results{}
