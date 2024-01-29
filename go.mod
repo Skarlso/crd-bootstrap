@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/fluxcd/cli-utils v0.36.0-flux.2
-	github.com/fluxcd/pkg/apis/meta v1.2.0
+	github.com/fluxcd/pkg/apis/meta v1.3.0
 	github.com/fluxcd/pkg/runtime v0.43.3
 	github.com/fluxcd/pkg/ssa v0.35.0
 	github.com/onsi/ginkgo/v2 v2.15.0
