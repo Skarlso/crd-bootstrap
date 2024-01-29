@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/fluxcd/cli-utils v0.36.0-flux.2
-	github.com/fluxcd/pkg/apis/meta v1.2.0
-	github.com/fluxcd/pkg/runtime v0.43.3
+	github.com/fluxcd/cli-utils v0.36.0-flux.3
+	github.com/fluxcd/pkg/apis/meta v1.3.0
+	github.com/fluxcd/pkg/runtime v0.44.0
 	github.com/fluxcd/pkg/ssa v0.35.0
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
@@ -139,12 +139,12 @@ require (
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20231226003508-02704c960a9b // indirect
 	golang.org/x/net v0.20.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.16.1 // indirect
+	golang.org/x/tools v0.17.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231212172506-995d672761c0 // indirect
