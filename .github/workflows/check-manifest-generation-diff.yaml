@@ -20,7 +20,7 @@ jobs:
       with:
         go-version-file: '${{ github.workspace }}/go.mod'
     - name: Restore Go cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: /home/runner/work/_temp/_github_home/go/pkg/mod
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
