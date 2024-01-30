@@ -11,6 +11,7 @@ import (
 
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling"
 	"github.com/fluxcd/pkg/ssa"
+	"github.com/fluxcd/pkg/ssa/utils"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -36,7 +37,7 @@ func readObjects(manifestPath string) ([]*unstructured.Unstructured, error) {
 	}
 	defer ms.Close()
 
-	objects, err := ssa.ReadObjects(bufio.NewReader(ms))
+	objects, err := utils.ReadObjects(bufio.NewReader(ms))
 	if err != nil {
 		return nil, err
 	}
