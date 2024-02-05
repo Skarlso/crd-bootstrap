@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/fluxcd/cli-utils v0.36.0-flux.3
 	github.com/fluxcd/pkg/apis/meta v1.3.0
-	github.com/fluxcd/pkg/runtime v0.44.0
+	github.com/fluxcd/pkg/runtime v0.44.1
 	github.com/fluxcd/pkg/ssa v0.36.0
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1

@@ -110,8 +110,8 @@ github.com/fluxcd/cli-utils v0.36.0-flux.3 h1:5CQTOc08UnabfwluIYxIhlhpCCTplWBn/x
 github.com/fluxcd/cli-utils v0.36.0-flux.3/go.mod h1:9lShvUz7uRPIjYZ6phr5AOuORkRDmaUgf/sZN7SDcpo=
 github.com/fluxcd/pkg/apis/meta v1.3.0 h1:KxeEc6olmSZvQ5pBONPE4IKxyoWQbqTJF1X6K5nIXpU=
 github.com/fluxcd/pkg/apis/meta v1.3.0/go.mod h1:3Ui8xFkoU4sYehqmscjpq7NjqH2YN1A2iX2okbO3/yA=
-github.com/fluxcd/pkg/runtime v0.44.0 h1:0BEPSpcsYXOiswKG5TWkin8fhCDHb0nDdAtq/5VrCSI=
-github.com/fluxcd/pkg/runtime v0.44.0/go.mod h1:s1AhSOTCEBPaTfz/GdBD/Ws66uOByIuNP4Znrq+is9M=
+github.com/fluxcd/pkg/runtime v0.44.1 h1:XuPTcNIgn/NsoIo/A6qfPZaD9E7cbnJTDbeNw8O1SZQ=
+github.com/fluxcd/pkg/runtime v0.44.1/go.mod h1:s1AhSOTCEBPaTfz/GdBD/Ws66uOByIuNP4Znrq+is9M=
 github.com/fluxcd/pkg/ssa v0.36.0 h1:h9FB6SrrdVlxNQtfG+Fb/Roe1e61EPgtmJ5ORlAxwkU=
 github.com/fluxcd/pkg/ssa v0.36.0/go.mod h1:FJj4xznwBvRM+9h02lGGC0CGYGucPeXO7P6NEPphbys=
 github.com/foxcpp/go-mockdns v1.0.0 h1:7jBqxd3WDWwi/6WhDvacvH1XsN3rOLXyHM1uhvIx6FI=
