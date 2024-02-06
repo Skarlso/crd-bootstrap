@@ -16,6 +16,8 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/registry"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"oras.land/oras-go/pkg/registry/remote"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,6 +76,12 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 
 	client.DestDir = tempHelm
 	client.Settings = &cli.EnvSettings{}
+	if obj.Spec.Source.Helm.SecretRef != nil {
+		if err := s.configureCredentials(ctx, client, obj.Spec.Source.Helm.SecretRef, obj.Namespace); err != nil {
+			return "", fmt.Errorf("failed to configure access credentials for helm repo: %w", err)
+		}
+	}
+
 	client.SetRegistryClient(registryClient)
 	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
 		client.Untar = true
@@ -295,4 +303,27 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, ch
 	}
 
 	return versions, nil
+}
+
+func (s *Source) configureCredentials(ctx context.Context, client *action.Pull, ref *v1.LocalObjectReference, namespace string) error {
+	secret := &v1.Secret{}
+	if err := s.client.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: namespace}, secret); err != nil {
+		return fmt.Errorf("failed to find attached secret: %w", err)
+	}
+
+	// If certificate file is provided, attach that.
+	if v, ok := secret.Data[v1alpha1.CaFileKey]; ok {
+		client.CaFile = string(v)
+	}
+	if v, ok := secret.Data[v1alpha1.CertFileKey]; ok {
+		client.CertFile = string(v)
+	}
+	if v, ok := secret.Data[v1alpha1.UsernameKey]; ok {
+		client.Username = string(v)
+	}
+	if v, ok := secret.Data[v1alpha1.PasswordKey]; ok {
+		client.Password = string(v)
+	}
+
+	return nil
 }
