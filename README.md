@@ -104,6 +104,73 @@ the last applied version in its status. Once there is a new one, it applies it t
 It also saves attempted versions. If a version is failed to apply, it will still record it as attempted version in its
 status.
 
+## Helm Charts
+
+Helm Charts can have CRDs in them according to the [specification](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).
+
+`crd-bootstrap` is able to extract those CRDs and install them as is.
+
+After that, the bootstrapper will keep them in sync similar to the other sources.
+
+There are two sources. With regular HTTP:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-helm
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    helm:
+      chartReference: https://ibm.github.io/helm101/
+      chartName: guestbook # mandatory in case of http
+  version:
+    semver: 0.2.1
+```
+
+Or with OCI:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-helm
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    helm:
+      chartReference: oci://ghcr.io/skarlso/helm/crd-bootstrap
+      chartName: crd-bootstrap
+  version:
+    semver: v0.4.2
+```
+
+To add access credentials provide a secret that could contain the following keys:
+
+```go
+const (
+	// Helm security access keys.
+	CaFileKey   = "caFile"
+	CertFileKey = "certFile"
+	UsernameKey = "username"
+	PasswordKey = "password"
+)
+```
+
+For example:
+
+```yaml
+  source:
+    helm:
+      chartReference: oci://ghcr.io/private/helm-chart
+      chartName: helm-chart
+      secretRef:
+        name: access-creds
+```
+
 ## Validation
 
 Before applying a new CRD there are options to make sure that it doesn't break anything by defining a template to check
@@ -143,52 +210,6 @@ object. User intervention is required to kick it off again to prevent messing up
 
 If it's desired to continue on failures, there is a setting for that. Simply set `continueOnValidationError: true` in the
 Bootstrap's spec.
-
-## Helm Charts
-
-Helm Charts can have CRDs in them according to the [specification](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).
-
-`crd-bootstrap` is able to extract those CRDs and install them as is.
-
-After that, the bootstrapper will keep them in sync similar to the other sources.
-
-At the moment, only public repos are supported... I'll add authentication with https://github.com/Skarlso/crd-bootstrap/issues/49.
-
-There are two sources. With regular HTTP:
-
-```yaml
-apiVersion: delivery.crd-bootstrap/v1alpha1
-kind: Bootstrap
-metadata:
-  name: bootstrap-sample-helm
-  namespace: crd-bootstrap-system
-spec:
-  interval: 10s
-  source:
-    helm:
-      chartReference: https://ibm.github.io/helm101/
-      chartName: guestbook # mandatory in case of http
-  version:
-    semver: 0.2.1
-```
-
-Or with OCI:
-
-```yaml
-apiVersion: delivery.crd-bootstrap/v1alpha1
-kind: Bootstrap
-metadata:
-  name: bootstrap-sample-helm
-  namespace: crd-bootstrap-system
-spec:
-  interval: 10s
-  source:
-    helm:
-      chartReference: oci://ghcr.io/skarlso/helm/crd-bootstrap
-      chartName: crd-bootstrap
-  version:
-    semver: v0.4.2
-```
 
 ## Multiple CRDs in a single file
 
