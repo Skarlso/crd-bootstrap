@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"oras.land/oras-go/pkg/registry/remote"
+	"oras.land/oras-go/pkg/registry/remote/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -154,7 +155,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 		err      error
 	)
 	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
-		versions, err = s.findVersionsForOCIRegistry(obj.Spec.Source.Helm.ChartReference)
+		versions, err = s.findVersionsForOCIRegistry(ctx, obj.Spec.Source.Helm, obj.Namespace)
 		if err != nil {
 			return false, "", err
 		}
@@ -227,12 +228,17 @@ func (s *Source) getLatestVersion(versions []string, constraint *semver.Constrai
 	return semvers[0].Original()
 }
 
-func (s *Source) findVersionsForOCIRegistry(chartRef string) ([]string, error) {
+func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alpha1.Helm, namespace string) ([]string, error) {
 	var versions []string
 	// helm's own way of doing this just doesn't work.
-	src, err := remote.NewRepository(strings.TrimPrefix(chartRef, "oci://"))
+	src, err := remote.NewRepository(strings.TrimPrefix(chartRef.ChartReference, "oci://"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct repository: %w", err)
+	}
+	if chartRef.SecretRef != nil {
+		if err := s.configureTransport(ctx, src, chartRef.SecretRef, namespace); err != nil {
+			return nil, fmt.Errorf("failed to configure transport client: %w", err)
+		}
 	}
 	if err := src.Tags(context.Background(), func(tags []string) error {
 		versions = append(versions, tags...)
@@ -324,6 +330,35 @@ func (s *Source) configureCredentials(ctx context.Context, client *action.Pull, 
 	if v, ok := secret.Data[v1alpha1.PasswordKey]; ok {
 		client.Password = string(v)
 	}
+
+	return nil
+}
+
+func (s *Source) configureTransport(ctx context.Context, src *remote.Repository, ref *v1.LocalObjectReference, namespace string) error {
+	secret := &v1.Secret{}
+	if err := s.client.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: namespace}, secret); err != nil {
+		return fmt.Errorf("failed to find attached secret: %w", err)
+	}
+
+	token, ok := secret.Data[v1alpha1.PasswordKey]
+	if !ok {
+		return fmt.Errorf("password wasn't defined in given secret")
+	}
+
+	username, ok := secret.Data[v1alpha1.UsernameKey]
+	if !ok {
+		return fmt.Errorf("username wasn't defined in given secret")
+	}
+	c := &auth.Client{
+		Credential: func(ctx context.Context, s string) (auth.Credential, error) {
+			return auth.Credential{
+				Username: string(username),
+				Password: string(token),
+			}, nil
+		},
+	}
+
+	src.Client = c
 
 	return nil
 }
