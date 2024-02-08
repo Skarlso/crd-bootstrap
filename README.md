@@ -171,6 +171,26 @@ For example:
         name: access-creds
 ```
 
+### Authentication
+
+There are two ways to authenticate with Helm.
+
+For OCI repositories, `docker-registry` type secrets are required. To create one, use:
+
+```bash
+kubectl create secret docker-registry git-secret -n crd-bootstrap-system \
+    --docker-server=ghcr.io \
+    --docker-username=$GITHUB_USER \
+    --docker-password=$GITHUB_TOKEN \
+    --docker-email=$GITHUB_EMAIL
+```
+
+For regular repositories use an Opaque secret:
+
+```bash
+kubectl create secret generic git-secret --from-literal=username=Skarlso --from-literal=password=$GITHUB_TOKEN -n crd-bootstrap-system
+```
+
 ## Validation
 
 Before applying a new CRD there are options to make sure that it doesn't break anything by defining a template to check

@@ -13,8 +13,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"helm.sh/helm/v3/pkg/action"
+	"github.com/docker/cli/cli/config/configfile"
+	"golang.org/x/oauth2"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/registry"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +26,6 @@ import (
 	"oras.land/oras-go/pkg/registry/remote"
 	"oras.land/oras-go/pkg/registry/remote/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
@@ -43,8 +46,6 @@ func NewSource(c *http.Client, client client.Client, next source.Contract) *Sour
 }
 
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
-	logger := log.FromContext(ctx)
-
 	if obj.Spec.Source.Helm == nil {
 		if s.next == nil {
 			return "", fmt.Errorf("helm isn't defined and there are no other sources configured")
@@ -53,51 +54,78 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	opts := []registry.ClientOption{
-		registry.ClientOptEnableCache(true),
-		registry.ClientOptWriter(os.Stderr),
-		registry.ClientOptPlainHTTP(), // this needs to be configurable with cred files
+	var out strings.Builder
+	var options []getter.Option
+	download := &downloader.ChartDownloader{
+		Out:     &out,
+		Verify:  downloader.VerifyNever,
+		Getters: getter.All(&cli.EnvSettings{}),
+		Options: options,
 	}
 
-	// Create a new registry client
-	registryClient, err := registry.NewClient(opts...)
-	if err != nil {
-		return "", fmt.Errorf("failed to create registry: %w", err)
+	if obj.Spec.Source.Helm.SecretRef != nil {
+		if err := s.configureCredentials(ctx, obj, download); err != nil {
+			return "", err
+		}
 	}
 
 	tempHelm := filepath.Join(dir, "helm-temp")
 	if err := os.MkdirAll(tempHelm, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create temp helm folder: %w", err)
 	}
+	defer os.RemoveAll(tempHelm)
 
-	defer os.Remove(tempHelm)
+	outputPath, _, err := download.DownloadTo(obj.Spec.Source.Helm.ChartReference, revision, tempHelm)
+	if err != nil {
+		return "", fmt.Errorf("failed to download chart: %w", err)
+	}
 
-	client := action.NewPullWithOpts(action.WithConfig(new(action.Configuration)))
-	client.Version = revision
-
-	client.DestDir = tempHelm
-	client.Settings = &cli.EnvSettings{}
-	if obj.Spec.Source.Helm.SecretRef != nil {
-		if err := s.configureCredentials(ctx, client, obj.Spec.Source.Helm.SecretRef, obj.Namespace); err != nil {
-			return "", fmt.Errorf("failed to configure access credentials for helm repo: %w", err)
+	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
+		if err := chartutil.ExpandFile(tempHelm, outputPath); err != nil {
+			return "", fmt.Errorf("failed ot untar: %w", err)
 		}
 	}
 
-	client.SetRegistryClient(registryClient)
+	if err := s.createCrdYaml(dir, tempHelm); err != nil {
+		return "", fmt.Errorf("failed to create crd yaml: %w", err)
+	}
+
+	return filepath.Join(dir, "crds.yaml"), nil
+}
+
+func (s *Source) configureCredentials(ctx context.Context, obj *v1alpha1.Bootstrap, download *downloader.ChartDownloader) error {
+	secret := &v1.Secret{}
+	if err := s.client.Get(ctx, types.NamespacedName{Name: obj.Spec.Source.Helm.SecretRef.Name, Namespace: obj.Namespace}, secret); err != nil {
+		return fmt.Errorf("failed to find attached secret: %w", err)
+	}
+
 	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
-		client.Untar = true
+		if err := s.configureOCICredentials(secret, obj.Spec.Source.Helm.ChartReference, download); err != nil {
+			return fmt.Errorf("failed to configure oci repository: %w", err)
+		}
+	} else {
+		password, ok := secret.Data[v1alpha1.PasswordKey]
+		if !ok {
+			return fmt.Errorf("missing password key")
+		}
+		username, ok := secret.Data[v1alpha1.UsernameKey]
+		if !ok {
+			return fmt.Errorf("missing username key")
+		}
+
+		download.Options = append(download.Options,
+			getter.WithBasicAuth(string(username), string(password)),
+			getter.WithPassCredentialsAll(true),
+		)
 	}
 
-	output, err := client.Run(obj.Spec.Source.Helm.ChartReference)
-	if err != nil {
-		logger.V(4).Info("got output from helm downloader", "output", output)
+	return nil
+}
 
-		return "", fmt.Errorf("failed to download helm chart: %w", err)
-	}
-
+func (s *Source) createCrdYaml(dir string, tempHelm string) error {
 	crds, err := os.Create(filepath.Join(dir, "crds.yaml"))
 	if err != nil {
-		return "", fmt.Errorf("failed to create crds bundle file: %w", err)
+		return fmt.Errorf("failed to create crds bundle file: %w", err)
 	}
 	defer crds.Close()
 
@@ -122,10 +150,10 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 
 		return nil
 	}); err != nil {
-		return "", fmt.Errorf("failed to walk path: %w", err)
+		return fmt.Errorf("failed to walk path: %w", err)
 	}
 
-	return filepath.Join(dir, "crds.yaml"), nil
+	return nil
 }
 
 type entry struct {
@@ -160,7 +188,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 			return false, "", err
 		}
 	} else {
-		versions, err = s.findVersionsForHTTPRepository(ctx, obj.Spec.Source.Helm.ChartReference, obj.Spec.Source.Helm.ChartName)
+		versions, err = s.findVersionsForHTTPRepository(ctx, obj.Spec.Source.Helm, obj.Namespace)
 		if err != nil {
 			return false, "", err
 		}
@@ -236,7 +264,7 @@ func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alp
 		return nil, fmt.Errorf("failed to construct repository: %w", err)
 	}
 	if chartRef.SecretRef != nil {
-		if err := s.configureTransport(ctx, src, chartRef.SecretRef, namespace); err != nil {
+		if err := s.configureTransportForOCIRepo(ctx, src, chartRef.SecretRef, namespace); err != nil {
 			return nil, fmt.Errorf("failed to configure transport client: %w", err)
 		}
 	}
@@ -251,8 +279,8 @@ func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alp
 	return versions, nil
 }
 
-func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, chartName string) ([]string, error) {
-	u, err := url.JoinPath(chartRef, "index.yaml")
+func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1alpha1.Helm, namespace string) ([]string, error) {
+	u, err := url.JoinPath(chartRef.ChartReference, "index.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("failed to join path: %w", err)
 	}
@@ -262,7 +290,21 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, ch
 		return nil, fmt.Errorf("failed to construct request: %w", err)
 	}
 
-	resp, err := s.Client.Do(req)
+	innerClient := s.Client
+
+	if chartRef.SecretRef != nil {
+		secret := &v1.Secret{}
+		if err := s.client.Get(ctx, types.NamespacedName{Name: chartRef.SecretRef.Name, Namespace: namespace}, secret); err != nil {
+			return nil, fmt.Errorf("failed to find attached secret: %w", err)
+		}
+
+		innerClient, err = s.configureHTTPCredentials(ctx, secret)
+		if err != nil {
+			return nil, fmt.Errorf("failed to configure secure access to HTTP repo: %w", err)
+		}
+	}
+
+	resp, err := innerClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -298,9 +340,9 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, ch
 		return nil, err
 	}
 
-	v, ok := res.Entries[chartName]
+	v, ok := res.Entries[chartRef.ChartName]
 	if !ok {
-		return nil, fmt.Errorf("no charts found in registry with name %s", chartName)
+		return nil, fmt.Errorf("no charts found in registry with name %s", chartRef.ChartName)
 	}
 
 	versions := make([]string, 0, len(v))
@@ -311,49 +353,36 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef, ch
 	return versions, nil
 }
 
-func (s *Source) configureCredentials(ctx context.Context, client *action.Pull, ref *v1.LocalObjectReference, namespace string) error {
+func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.Repository, ref *v1.LocalObjectReference, namespace string) error {
 	secret := &v1.Secret{}
 	if err := s.client.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: namespace}, secret); err != nil {
 		return fmt.Errorf("failed to find attached secret: %w", err)
 	}
-
-	// If certificate file is provided, attach that.
-	if v, ok := secret.Data[v1alpha1.CaFileKey]; ok {
-		client.CaFile = string(v)
-	}
-	if v, ok := secret.Data[v1alpha1.CertFileKey]; ok {
-		client.CertFile = string(v)
-	}
-	if v, ok := secret.Data[v1alpha1.UsernameKey]; ok {
-		client.Username = string(v)
-	}
-	if v, ok := secret.Data[v1alpha1.PasswordKey]; ok {
-		client.Password = string(v)
-	}
-
-	return nil
-}
-
-func (s *Source) configureTransport(ctx context.Context, src *remote.Repository, ref *v1.LocalObjectReference, namespace string) error {
-	secret := &v1.Secret{}
-	if err := s.client.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: namespace}, secret); err != nil {
-		return fmt.Errorf("failed to find attached secret: %w", err)
-	}
-
-	token, ok := secret.Data[v1alpha1.PasswordKey]
+	config, ok := secret.Data[v1alpha1.DockerJSONConfigKey]
 	if !ok {
 		return fmt.Errorf("password wasn't defined in given secret")
 	}
-
-	username, ok := secret.Data[v1alpha1.UsernameKey]
-	if !ok {
-		return fmt.Errorf("username wasn't defined in given secret")
+	tmpConfig, err := os.CreateTemp("", "config.json")
+	if err != nil {
+		return fmt.Errorf("failed to create a temp config: %w", err)
 	}
+	defer os.Remove(tmpConfig.Name())
+
+	host := src.Reference.Host()
+	conf := configfile.New(tmpConfig.Name())
+	if err := conf.LoadFromReader(strings.NewReader(string(config))); err != nil {
+		return fmt.Errorf("failed to parse the config: %w", err)
+	}
+	authForHost, ok := conf.AuthConfigs[host]
+	if !ok {
+		return fmt.Errorf("failed to find auth configuration for host %s", host)
+	}
+
 	c := &auth.Client{
 		Credential: func(ctx context.Context, s string) (auth.Credential, error) {
 			return auth.Credential{
-				Username: string(username),
-				Password: string(token),
+				Username: authForHost.Username,
+				Password: authForHost.Password,
 			}, nil
 		},
 	}
@@ -361,4 +390,74 @@ func (s *Source) configureTransport(ctx context.Context, src *remote.Repository,
 	src.Client = c
 
 	return nil
+}
+
+func (s *Source) configureOCICredentials(secret *v1.Secret, ref string, download *downloader.ChartDownloader) error {
+	config, ok := secret.Data[v1alpha1.DockerJSONConfigKey]
+	if !ok {
+		return fmt.Errorf("dockerjsonconfig is needed in secret to access OCI repository")
+	}
+
+	tmpConfig, err := os.CreateTemp("", "config.json")
+	if err != nil {
+		return fmt.Errorf("failed to create a temp config: %w", err)
+	}
+
+	defer os.Remove(tmpConfig.Name())
+	src, err := remote.NewRepository(strings.TrimPrefix(ref, "oci://"))
+	if err != nil {
+		return fmt.Errorf("failed to construct repository: %w", err)
+	}
+
+	host := src.Reference.Host()
+	conf := configfile.New(tmpConfig.Name())
+	if err := conf.LoadFromReader(strings.NewReader(string(config))); err != nil {
+		return fmt.Errorf("failed to parse the config: %w", err)
+	}
+	if err := conf.Save(); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+
+	authForHost, ok := conf.AuthConfigs[host]
+	if !ok {
+		return fmt.Errorf("failed to find auth configuration for host %s", host)
+	}
+
+	download.Options = append(download.Options,
+		getter.WithBasicAuth(authForHost.Username, authForHost.Password),
+		getter.WithPassCredentialsAll(true),
+	)
+
+	// write out the docker config and pass it in
+	opts := []registry.ClientOption{
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptWriter(os.Stderr),
+		registry.ClientOptCredentialsFile(tmpConfig.Name()),
+	}
+
+	registryClient, err := registry.NewClient(opts...)
+	if err != nil {
+		return fmt.Errorf("failed to create registry: %w", err)
+	}
+
+	download.Options = append(download.Options,
+		getter.WithRegistryClient(registryClient),
+		getter.WithUntar(),
+	)
+	download.RegistryClient = registryClient
+
+	return nil
+}
+
+func (s *Source) configureHTTPCredentials(ctx context.Context, secret *v1.Secret) (*http.Client, error) {
+	token, ok := secret.Data[v1alpha1.PasswordKey]
+	if !ok {
+		return nil, fmt.Errorf("missing password key")
+	}
+
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: string(token)},
+	)
+
+	return oauth2.NewClient(ctx, ts), nil
 }
