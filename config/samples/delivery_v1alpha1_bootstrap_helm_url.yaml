@@ -9,5 +9,7 @@ spec:
     helm:
       chartReference: https://ibm.github.io/helm101/
       chartName: guestbook
+      secretRef:
+        name: access-creds
   version:
     semver: 0.2.1
