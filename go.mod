@@ -13,11 +13,11 @@ require (
 	github.com/onsi/gomega v1.31.1
 	golang.org/x/oauth2 v0.17.0
 	helm.sh/helm/v3 v3.14.0
-	k8s.io/api v0.29.1
+	k8s.io/api v0.29.2
 	k8s.io/apiextensions-apiserver v0.29.1
-	k8s.io/apimachinery v0.29.1
-	k8s.io/cli-runtime v0.29.1
-	k8s.io/client-go v0.29.1
+	k8s.io/apimachinery v0.29.2
+	k8s.io/cli-runtime v0.29.2
+	k8s.io/client-go v0.29.2
 	oras.land/oras-go v1.2.5
 	sigs.k8s.io/controller-runtime v0.17.1
 )
