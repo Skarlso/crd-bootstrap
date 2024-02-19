@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
 	golang.org/x/oauth2 v0.17.0
-	helm.sh/helm/v3 v3.14.0
+	helm.sh/helm/v3 v3.14.1
 	k8s.io/api v0.29.1
 	k8s.io/apiextensions-apiserver v0.29.1
 	k8s.io/apimachinery v0.29.1
