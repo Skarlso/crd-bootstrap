@@ -53,6 +53,29 @@ type GitHub struct {
 	Manifest string `json:"manifest"`
 }
 
+// GitLab defines a GitLab type source where the CRD is coming from `release` section of a GitLab repository.
+// https://docs.gitlab.com/ee/api/releases/index.html
+type GitLab struct {
+	// BaseAPIURL is used for the GitLab API url. Defaults to api.github.com if not defined.
+	// +optional
+	BaseAPIURL string `json:"baseAPIURL,omitempty"`
+
+	// Owner defines the owner of the repository. Otherwise, known as Namespace.
+	// +required
+	Owner string `json:"owner"`
+
+	// Repo defines the name of the repository.
+	// +required
+	Repo string `json:"repo"`
+
+	// SecretRef contains a pointed to a Token in case the repository is private.
+	// +optional
+	SecretRef *v1.LocalObjectReference `json:"secretRef,omitempty"`
+	// Manifest defines the name of the manifest that contains the CRD definitions on the GitLab release page.
+	// +required
+	Manifest string `json:"manifest"`
+}
+
 // Helm defines a Helm type source where the CRD is coming from a helm release with a version.
 type Helm struct {
 	// ChartReference is the location of the helm chart.
@@ -93,7 +116,10 @@ type URL struct {
 type Source struct {
 	// GitHub type source.
 	// +optional
-	GitHub *GitHub `json:"gitHub,omitempty"`
+	GitHub *GitHub `json:"github,omitempty"`
+	// GitLab type source.
+	// +optional
+	GitLab *GitLab `json:"gitlab,omitempty"`
 	// Helm type source.
 	// +optional
 	Helm *Helm `json:"helm,omitempty"`

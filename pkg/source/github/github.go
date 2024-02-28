@@ -106,7 +106,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 // getLatestVersion calls the GitHub API and returns the latest released version.
 func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
 	logger := log.FromContext(ctx)
-	c := http.DefaultClient
+	c := s.Client
 	if obj.Spec.Source.GitHub.SecretRef != nil {
 		var err error
 		c, err = s.constructAuthenticatedClient(ctx, obj)

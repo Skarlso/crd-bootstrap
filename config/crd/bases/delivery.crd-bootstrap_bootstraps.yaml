@@ -64,7 +64,7 @@ spec:
                     - name
                     - namespace
                     type: object
-                  gitHub:
+                  github:
                     description: GitHub type source.
                     properties:
                       baseAPIURL:
@@ -81,6 +81,39 @@ spec:
                         type: string
                       owner:
                         description: Owner defines the owner of the repository.
+                        type: string
+                      repo:
+                        description: Repo defines the name of the repository.
+                        type: string
+                      secretRef:
+                        description: SecretRef contains a pointed to a Token in case
+                          the repository is private.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                    required:
+                    - manifest
+                    - owner
+                    - repo
+                    type: object
+                  gitlab:
+                    description: GitLab type source.
+                    properties:
+                      baseAPIURL:
+                        description: BaseAPIURL is used for the GitLab API url. Defaults
+                          to api.github.com if not defined.
+                        type: string
+                      manifest:
+                        description: Manifest defines the name of the manifest that
+                          contains the CRD definitions on the GitLab release page.
+                        type: string
+                      owner:
+                        description: Owner defines the owner of the repository. Otherwise,
+                          known as Namespace.
                         type: string
                       repo:
                         description: Repo defines the name of the repository.
