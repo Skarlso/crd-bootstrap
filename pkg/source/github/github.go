@@ -200,10 +200,12 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 		return fmt.Errorf("failed to download %s from %s, status: %s", obj.Spec.Source.GitHub.Manifest, downloadURL, resp.Status)
 	}
 
-	wf, err := os.Open(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest))
+	wf, err := os.Create(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
+
+	defer wf.Close()
 
 	if _, err := io.Copy(wf, resp.Body); err != nil {
 		return fmt.Errorf("failed to write to temp file: %w", err)

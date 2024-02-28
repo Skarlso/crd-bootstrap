@@ -149,6 +149,8 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 		return "", fmt.Errorf("failed to retrieve latest version, please make sure owner and repo are spelled correctly")
 	}
 
+	logger.Info("latest version found", "version", m.Tag)
+
 	return m.Tag, err
 }
 
@@ -218,10 +220,12 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 		return fmt.Errorf("failed to download url content: %w", err)
 	}
 
-	wf, err := os.Open(filepath.Join(dir, obj.Spec.Source.GitLab.Manifest))
+	wf, err := os.Create(filepath.Join(dir, obj.Spec.Source.GitLab.Manifest))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
+
+	defer wf.Close()
 
 	// stream the asset content into a temp file
 	if _, err := io.Copy(wf, assetBody); err != nil {
