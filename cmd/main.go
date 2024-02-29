@@ -36,6 +36,7 @@ import (
 	"github.com/Skarlso/crd-bootstrap/internal/controller"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/gitlab"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/helm"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/url"
 )
@@ -90,7 +91,8 @@ func main() {
 	c := http.DefaultClient
 	urlProvider := url.NewSource(c, mgr.GetClient(), nil)
 	githubProvider := github.NewSource(c, mgr.GetClient(), urlProvider)
-	configMapProvider := configmap.NewSource(mgr.GetClient(), githubProvider)
+	gitlabProvider := gitlab.NewSource(c, mgr.GetClient(), githubProvider)
+	configMapProvider := configmap.NewSource(mgr.GetClient(), gitlabProvider)
 	helmProvider := helm.NewSource(c, mgr.GetClient(), configMapProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:         mgr.GetClient(),

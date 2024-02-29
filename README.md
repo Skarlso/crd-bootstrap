@@ -17,7 +17,7 @@ Let's look at each of them.
 
 There are two ways to fetch CRDs from a URL.
 
-First, by defining a Digest. If a digest is defined together with a URL the operator will _only_ apply the content that
+First, by defining a Digest. If a `digest` is defined together with a URL the operator will _only_ apply the content that
 corresponds to the digest.
 
 For example:
@@ -88,29 +88,58 @@ And done. What this does, we'll get to under [But what does it do?](#but-what-do
 
 ## GitHub
 
-GitHub is largely the same, but 
+GitHub is mostly the same, but...
 
 ## But what does it do?
 
 ### Constant Version Reconciliation
 
 The semver that we defined is a constraint. A semver constraint. It could be something like `>=v1`. And anything that
-satisfies this constraint gets installed. It only rolls forward, to prevent accidental or intentional upstream version
+satisfies this constraint gets installed. It only rolls forward to prevent accidental or intentional upstream version
 rollbacks if a later version is removed.
 
 Given the `interval` it checks every time if there is a newer version satisfying the constraint. The CRD keeps track of
 the last applied version in its status. Once there is a new one, it applies it to the cluster and saves that version.
 
-It also saves attempted versions. If a version is failed to apply, it will still record it as attempted version in its
+It also saves attempted versions. If a version fails to apply, it will still record it as the attempted version in its
 status.
+
+## GitLab
+
+GitLab has a slightly different approach to manifests and such. The reconciliation process is the same as for GitHub.
+
+The difference is that the manifest needs to be in the release as an `Other` link asset.
+
+Described [Release Assets](https://docs.gitlab.com/ee/user/project/releases/index.html#release-assets).
+
+For an example release, check out [this](https://gitlab.com/Skarlso/gitlab-test-1/-/releases/v0.0.2) release.
+
+Once this manifest exists, the yaml should look something like this:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    gitlab:
+      owner: Skarlso
+      repo: gitlab-test-1
+      manifest: manifest.yaml # defined as an Other type link asset
+  version:
+    semver: v0.0.2
+```
 
 ## Helm Charts
 
 Helm Charts can have CRDs in them according to the [specification](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).
 
-`crd-bootstrap` is able to extract those CRDs and install them as is.
+`crd-bootstrap` can extract those CRDs and install them as is.
 
-After that, the bootstrapper will keep them in sync similar to the other sources.
+After that, the bootstrapper will keep them in sync, similar to the other sources.
 
 There are two sources. With regular HTTP:
 

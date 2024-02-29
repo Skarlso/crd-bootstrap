@@ -1,0 +1,14 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    gitlab:
+      owner: Skarlso
+      repo: gitlab-test-1
+      manifest: manifest.yaml # defined as an Other type link asset
+  version:
+    semver: v0.0.2
