@@ -41,7 +41,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Helm
-        uses: azure/setup-helm@v3
+        uses: azure/setup-helm@v4
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
