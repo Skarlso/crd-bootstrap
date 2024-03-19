@@ -1,18 +1,21 @@
 version: 2
+
 updates:
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    labels:
-    - "skip-release-notes"
-    - "dependencies"
-    open-pull-requests-limit: 20 # setting a higher number so we can bundle all the weekly updates together
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule: 
-      interval: weekly
-    labels: 
-     - "skip-release-notes"
-     - "dependencies"
-    open-pull-requests-limit: 10 # setting a higher number so we can bundle all the weekly updates together
+    groups:
+      # xref: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#groups
+      ci:
+        patterns:
+          - "*"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    groups:
+      go:
+        update-types:  ["minor","patch"]
+    schedule:
+      interval: "weekly"
+      day: "sunday"
