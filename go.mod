@@ -9,7 +9,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.3.0
 	github.com/fluxcd/pkg/runtime v0.44.1
 	github.com/fluxcd/pkg/ssa v0.36.0
-	github.com/onsi/ginkgo/v2 v2.16.0
+	github.com/onsi/ginkgo/v2 v2.17.0
 	github.com/onsi/gomega v1.31.1
 	golang.org/x/oauth2 v0.18.0
 	helm.sh/helm/v3 v3.14.2
