@@ -1,11 +1,13 @@
 module github.com/Skarlso/crd-bootstrap
 
-go 1.21
+go 1.22
+
+toolchain go1.22.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/docker/cli v26.0.0+incompatible
-	github.com/fluxcd/cli-utils v0.36.0-flux.3
+	github.com/fluxcd/cli-utils v0.36.0-flux.4
 	github.com/fluxcd/pkg/apis/meta v1.3.0
 	github.com/fluxcd/pkg/runtime v0.44.1
 	github.com/fluxcd/pkg/ssa v0.36.0
@@ -95,7 +97,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
-	github.com/prometheus/common v0.47.0 // indirect
+	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -121,7 +123,7 @@ require (
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.18.0 // indirect
+	golang.org/x/tools v0.19.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240221002015-b0ce06bbee7c // indirect
@@ -136,8 +138,8 @@ require (
 	k8s.io/component-base v0.29.3 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240221221325-2ac9dc51f3f1 // indirect
-	k8s.io/kubectl v0.29.2 // indirect
-	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
+	k8s.io/kubectl v0.29.3 // indirect
+	k8s.io/utils v0.0.0-20240310230437-4693a0247e57 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.16.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.16.0 // indirect
