@@ -6,7 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/docker/cli v26.0.0+incompatible
+	github.com/docker/cli v26.0.1+incompatible
 	github.com/fluxcd/cli-utils v0.36.0-flux.5
 	github.com/fluxcd/pkg/apis/meta v1.4.0
 	github.com/fluxcd/pkg/runtime v0.46.0
@@ -14,14 +14,14 @@ require (
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
 	golang.org/x/oauth2 v0.19.0
-	helm.sh/helm/v3 v3.14.3
+	helm.sh/helm/v3 v3.14.4
 	k8s.io/api v0.29.3
 	k8s.io/apiextensions-apiserver v0.29.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/cli-runtime v0.29.3
 	k8s.io/client-go v0.29.3
 	oras.land/oras-go v1.2.5
-	sigs.k8s.io/controller-runtime v0.17.2
+	sigs.k8s.io/controller-runtime v0.17.3
 )
 
 require (
