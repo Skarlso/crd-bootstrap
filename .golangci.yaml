@@ -1,11 +1,9 @@
 run:
-  go: "1.21"
+  go: "1.22"
   timeout: 10m
   tests: false
   allow-parallel-runners: true
   issues-exit-code: 2
-  skip-dirs:
-    - "hack"
 
 linters:
   enable-all: true
@@ -26,13 +24,13 @@ linters:
     - dupl             # Check code duplications.
     - cyclop           # Complex functions are not good.
     - gochecknoinits   # Init functions cause an import to have side effects,
-                       #   and side effects are hard to test,
-                       #   reduce readability and increase the complexity of code.
+      #   and side effects are hard to test,
+    #   reduce readability and increase the complexity of code.
     - containedctx     # Struct should not contain context, action does.
     - nilnil           # A function should return either something valuable
-                       #   or an error, but both value and error as nil is
-                       #   useless. Like when I call it, why is it nil? Tell me
-                       #   in an error why.
+      #   or an error, but both value and error as nil is
+      #   useless. Like when I call it, why is it nil? Tell me
+    #   in an error why.
     - bodyclose
     - unparam
     - nonamedreturns   # Either named return, or use simply `return`.
@@ -78,12 +76,11 @@ linters-settings:
       - blank
       - dot
       - default
-      - prefix(github.com/open-component-model/ocm)
     custom-order: true
   staticcheck:
-    go: "1.21"
+    go: "1.22"
   stylecheck:
-    go: "1.21"
+    go: "1.22"
   funlen:
     lines: 110
     statements: 60
@@ -91,17 +88,14 @@ linters-settings:
     max-complexity: 20
     skip-tests: true
   nolintlint:
-    allow-leading-space: false
     allow-unused: false
     require-explanation: true
     require-specific: false
   varnamelen:
     ignore-names:
-    - err
-    - wg
-    - id
-  govet:
-    check-shadowing: true
+      - err
+      - wg
+      - id
   lll:
     line-length: 120
   gosec:
@@ -113,13 +107,13 @@ issues:
   exclude-rules:
     - path: cmds/
       linters:
-      - forbidigo
+        - forbidigo
     - text: "should not use dot imports|don't use an underscore in package name"
       linters:
-      - golint
+        - golint
     - source: "https://"
       linters:
-      - lll
+        - lll
     - text: "shadow: declaration of \"err\""
       linters:
         - govet
@@ -128,23 +122,23 @@ issues:
         - govet
     - path: _test\.go
       linters:
-      - goerr113
-      - gocyclo
-      - errcheck
-      - gosec
-      - dupl
-      - funlen
-      - scopelint
+        - goerr113
+        - gocyclo
+        - errcheck
+        - gosec
+        - dupl
+        - funlen
+        - scopelint
     - text: "Spec.DeepCopyInto undefined"
       linters:
-      - typecheck
+        - typecheck
     - text: "G601: Implicit memory aliasing in for loop"
       # Ignored cos why not, that was the request.
       linters:
-      - gosec
+        - gosec
     - source: "// .* #\\d+"
       linters:
-      - godox
+        - godox
     - path: ignore/.*\.go
       linters:
-      - dupword
+        - dupword
