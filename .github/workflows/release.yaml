@@ -46,7 +46,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --release-notes=docs/release_notes/${{ steps.prep.outputs.VERSION }}.md --skip-validate
+          args: release --release-notes=docs/release_notes/${{ steps.prep.outputs.VERSION }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and release the helm charts
