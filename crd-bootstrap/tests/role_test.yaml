@@ -1,0 +1,7 @@
+suite: test deployment
+templates:
+  - role.yaml
+tests:
+  - it: role should match snapshot
+    asserts:
+      - matchSnapshot: {}

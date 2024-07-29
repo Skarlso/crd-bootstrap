@@ -40,7 +40,7 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=crd-bootstrap-manager-role crd webhook paths="./api/..." paths="./internal/controller/..." output:crd:artifacts:config=crd-bootstrap/crds output:rbac:artifacts:config=crd-bootstrap/templates
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -61,6 +61,9 @@ test: manifests generate fmt vet envtest ## Run tests.
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint.
 	$(GOLANGCI_LINT) run
+
+helm-test:
+	helm unittest crd-bootstrap
 
 ##@ Build
 
