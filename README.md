@@ -64,7 +64,7 @@ spec:
 ## ConfigMap
 
 To install a set of CRDs from a ConfigMap, simply create a ConfigMap like the one under samples/config.
-![configmap](./config/samples/config-map.yaml).
+![configmap](samples/config-map.yaml).
 
 Next, apply a bootstrap CRD:
 

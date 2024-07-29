@@ -7,7 +7,7 @@ if str(local("command -v " + kubectl_cmd + " || true", quiet = True)) == "":
     fail("Required command '" + kubectl_cmd + "' not found in PATH")
 
 # Use kustomize to build the install yaml files
-install = kustomize('config/default')
+install = helm('crd-bootstrap')
 
 # Update the root security group. Tilt requires root access to update the
 # running process.

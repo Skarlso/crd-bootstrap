@@ -35,7 +35,15 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+      - name: Install chart unittest
+        run: |
+          helm env
+          helm plugin install https://github.com/helm-unittest/helm-unittest
       - name: Run lint
         run: make lint
       - name: Run tests
         run: make test
+      - name: Run helm test
+        run: make helm-test
