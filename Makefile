@@ -63,7 +63,7 @@ lint: golangci-lint ## Run golangci-lint.
 	$(GOLANGCI_LINT) run
 
 helm-test:
-
+	helm unittest crd-bootstrap
 
 ##@ Build
 
