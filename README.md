@@ -269,6 +269,34 @@ For example, consider the GitHub example. Flux's `install.yaml` contains all the
 and Service objects too. Bootstrap doesn't care. It only installs the CRDs from that by using server-side-apply.
 
 The status of the Bootstrap object will keep track of what CRDs it installed.
+
+## Remote Cluster
+
+It's possible to define a target cluster to apply CRDs into. This is done using a KubeConfig secret and then
+referencing that secret via `KubeConfig.SecretRef` like this:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+spec:
+  interval: 10s
+  source:
+    url:
+      url: https://raw.githubusercontent.com/krok-o/operator/main/config/crd/bases/delivery.krok.app_krokevents.yaml
+  kubeConfig: # define a secret which contains the KubeConfig to access the target cluster.
+    secretRef:
+      secretRef:
+        name: kubeconfig
+        key: kubeconfig
+```
+
+There is also an option to define a ServiceAccount for impersonating in the target cluster using `KubeConfig.ServiceAccount`.
+
+Once the secret is defined and used the CRD should be applied in the target cluster. All further operations should
+function as is.
+
 ## Contributing
 
 Contributions are always welcomed.
