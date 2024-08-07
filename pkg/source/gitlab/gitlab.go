@@ -3,6 +3,7 @@ package gitlab
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,7 +44,7 @@ func NewSource(c *http.Client, client client.Client, next source.Contract) *Sour
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
 	if obj.Spec.Source.GitLab == nil {
 		if s.next == nil {
-			return "", fmt.Errorf("gitlab isn't defined and there are no other sources configured")
+			return "", errors.New("gitlab isn't defined and there are no other sources configured")
 		}
 
 		return s.next.FetchCRD(ctx, dir, obj, revision)
@@ -59,7 +60,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
 	if obj.Spec.Source.GitLab == nil {
 		if s.next == nil {
-			return false, "", fmt.Errorf("gitlab isn't defined and there are no other sources configured")
+			return false, "", errors.New("gitlab isn't defined and there are no other sources configured")
 		}
 
 		return s.next.HasUpdate(ctx, obj)
@@ -146,7 +147,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	}
 
 	if m.Tag == "" {
-		return "", fmt.Errorf("failed to retrieve latest version, please make sure owner and repo are spelled correctly")
+		return "", errors.New("failed to retrieve latest version, please make sure owner and repo are spelled correctly")
 	}
 
 	logger.Info("latest version found", "version", m.Tag)
@@ -252,7 +253,7 @@ func (s *Source) fetchURLContent(ctx context.Context, c *http.Client, url string
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		content, err := io.ReadAll(res.Body)
 		if err != nil {
-			logger.Error(fmt.Errorf("failed to read body for further information"), "failed to read body for further information")
+			logger.Error(errors.New("failed to read body for further information"), "failed to read body for further information")
 		}
 
 		logger.Error(fmt.Errorf("unexpected status code from gitlab (%d)", res.StatusCode), "unexpected status code from gitlab with message", "message", string(content))
@@ -271,7 +272,7 @@ func (s *Source) constructAuthenticatedClient(ctx context.Context, obj *v1alpha1
 
 	token, ok := secret.Data["token"]
 	if !ok {
-		return nil, fmt.Errorf("token key not found in provided secret")
+		return nil, errors.New("token key not found in provided secret")
 	}
 
 	ts := oauth2.StaticTokenSource(

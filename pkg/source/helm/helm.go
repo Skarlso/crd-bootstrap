@@ -2,6 +2,7 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -48,7 +49,7 @@ func NewSource(c *http.Client, client client.Client, next source.Contract) *Sour
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
 	if obj.Spec.Source.Helm == nil {
 		if s.next == nil {
-			return "", fmt.Errorf("helm isn't defined and there are no other sources configured")
+			return "", errors.New("helm isn't defined and there are no other sources configured")
 		}
 
 		return s.next.FetchCRD(ctx, dir, obj, revision)
@@ -106,11 +107,11 @@ func (s *Source) configureCredentials(ctx context.Context, obj *v1alpha1.Bootstr
 	} else {
 		password, ok := secret.Data[v1alpha1.PasswordKey]
 		if !ok {
-			return fmt.Errorf("missing password key")
+			return errors.New("missing password key")
 		}
 		username, ok := secret.Data[v1alpha1.UsernameKey]
 		if !ok {
-			return fmt.Errorf("missing username key")
+			return errors.New("missing username key")
 		}
 
 		download.Options = append(download.Options,
@@ -131,6 +132,10 @@ func (s *Source) createCrdYaml(dir string, tempHelm string) error {
 
 	// find all yaml files that contain CRDs in them and append to the end result.
 	if err := filepath.Walk(tempHelm, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if info.Name() == "crds" && info.IsDir() {
 			files, err := os.ReadDir(path)
 			if err != nil {
@@ -172,7 +177,7 @@ type results struct {
 func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
 	if obj.Spec.Source.Helm == nil {
 		if s.next == nil {
-			return false, "", fmt.Errorf("helm isn't defined and there are no other sources configured")
+			return false, "", errors.New("helm isn't defined and there are no other sources configured")
 		}
 
 		return s.next.HasUpdate(ctx, obj)
@@ -360,7 +365,7 @@ func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.R
 	}
 	config, ok := secret.Data[v1alpha1.DockerJSONConfigKey]
 	if !ok {
-		return fmt.Errorf("password wasn't defined in given secret")
+		return errors.New("password wasn't defined in given secret")
 	}
 	tmpConfig, err := os.CreateTemp("", "config.json")
 	if err != nil {
@@ -379,7 +384,7 @@ func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.R
 	}
 
 	c := &auth.Client{
-		Credential: func(ctx context.Context, s string) (auth.Credential, error) {
+		Credential: func(_ context.Context, _ string) (auth.Credential, error) {
 			return auth.Credential{
 				Username: authForHost.Username,
 				Password: authForHost.Password,
@@ -395,7 +400,7 @@ func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.R
 func (s *Source) configureOCICredentials(secret *v1.Secret, ref string, download *downloader.ChartDownloader) error {
 	config, ok := secret.Data[v1alpha1.DockerJSONConfigKey]
 	if !ok {
-		return fmt.Errorf("dockerjsonconfig is needed in secret to access OCI repository")
+		return errors.New("dockerjsonconfig is needed in secret to access OCI repository")
 	}
 
 	tmpConfig, err := os.CreateTemp("", "config.json")
@@ -452,7 +457,7 @@ func (s *Source) configureOCICredentials(secret *v1.Secret, ref string, download
 func (s *Source) configureHTTPCredentials(ctx context.Context, secret *v1.Secret) (*http.Client, error) {
 	token, ok := secret.Data[v1alpha1.PasswordKey]
 	if !ok {
-		return nil, fmt.Errorf("missing password key")
+		return nil, errors.New("missing password key")
 	}
 
 	ts := oauth2.StaticTokenSource(

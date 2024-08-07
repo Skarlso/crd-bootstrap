@@ -7,3 +7,8 @@ spec:
   source:
     url:
       url: https://raw.githubusercontent.com/krok-o/operator/main/config/crd/bases/delivery.krok.app_krokevents.yaml
+  kubeConfig:
+    secretRef:
+      secretRef:
+        name: kubeconfig
+        key: kubeconfig

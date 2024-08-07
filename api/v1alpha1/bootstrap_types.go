@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"time"
 
+	"github.com/fluxcd/pkg/apis/meta"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,16 @@ import (
 const (
 	BootstrapOwnerLabelKey = "delivery.crd-bootstrap.owned"
 )
+
+// KubeConfig defines as way to access a remote cluster.
+type KubeConfig struct {
+	// ServiceAccount defines any custom service accounts to use in order to
+	// apply crds in a remote cluster.
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+	// SecretRef defines a secret with the key in which the kubeconfig is in.
+	// +optional
+	SecretRef *meta.KubeConfigReference `json:"secretRef,omitempty"`
+}
 
 // GitHub defines a GitHub type source where the CRD is coming from `release` section of a GitHub repository.
 type GitHub struct {
@@ -169,6 +180,10 @@ type BootstrapSpec struct {
 	// Prune will clean up all applied objects once the Bootstrap object is removed.
 	// +optional
 	Prune bool `json:"prune,omitempty"`
+
+	// KubeConfig defines a kubeconfig that could be used to access another cluster and apply a CRD there.
+	// +optional
+	KubeConfig *KubeConfig `json:"kubeConfig,omitempty"`
 }
 
 // BootstrapStatus defines the observed state of Bootstrap.

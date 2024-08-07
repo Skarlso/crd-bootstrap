@@ -58,11 +58,13 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var defaultServiceAccount string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -95,9 +97,10 @@ func main() {
 	configMapProvider := configmap.NewSource(mgr.GetClient(), gitlabProvider)
 	helmProvider := helm.NewSource(c, mgr.GetClient(), configMapProvider)
 	if err = (&controller.BootstrapReconciler{
-		Client:         mgr.GetClient(),
-		Scheme:         mgr.GetScheme(),
-		SourceProvider: helmProvider,
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		SourceProvider:        helmProvider,
+		DefaultServiceAccount: defaultServiceAccount,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Bootstrap")
 		os.Exit(1)
