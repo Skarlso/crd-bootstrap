@@ -2,6 +2,7 @@ package configmap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func NewSource(client client.Client, next source.Contract) *Source {
 func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
 	if obj.Spec.Source.ConfigMap == nil {
 		if s.next == nil {
-			return "", fmt.Errorf("configmap isn't defined and there are no other sources configured")
+			return "", errors.New("configmap isn't defined and there are no other sources configured")
 		}
 
 		return s.next.FetchCRD(ctx, dir, obj, revision)
@@ -54,7 +55,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 
 	v, ok := configMap.Data[version]
 	if !ok {
-		return "", fmt.Errorf("version key not defined in configmap")
+		return "", errors.New("version key not defined in configmap")
 	}
 
 	if v != revision {
@@ -83,7 +84,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
 	if obj.Spec.Source.ConfigMap == nil {
 		if s.next == nil {
-			return false, "", fmt.Errorf("configmap isn't defined and there are no other sources configured")
+			return false, "", errors.New("configmap isn't defined and there are no other sources configured")
 		}
 
 		return s.next.HasUpdate(ctx, obj)
@@ -99,7 +100,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 
 	latestVersion, ok := configMap.Data[version]
 	if !ok {
-		return false, "", fmt.Errorf("version key not defined in configmap")
+		return false, "", errors.New("version key not defined in configmap")
 	}
 	latestVersionSemver, err := semver.NewVersion(latestVersion)
 	if err != nil {

@@ -1,23 +1,18 @@
-// SPDX-FileCopyrightText: 2022 SAP SE or an SAP affiliate company and Open Component Model contributors.
-//
-// SPDX-License-Identifier: Apache-2.0
-
 package controller
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/fluxcd/cli-utils/pkg/kstatus/polling"
+	runtimeClient "github.com/fluxcd/pkg/runtime/client"
 	"github.com/fluxcd/pkg/ssa"
 	"github.com/fluxcd/pkg/ssa/utils"
-	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	apiruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 )
 
 // readObjects takes a path to a file that contains one or more CRDs and created a list of
@@ -52,42 +47,32 @@ func readObjects(manifestPath string) ([]*unstructured.Unstructured, error) {
 	return crds, nil
 }
 
-// ownerRef contains the server-side apply field manager and ownership labels group.
-var ownerRef = ssa.Owner{
-	Field: "delivery",
-	Group: "crd-bootstrap.delivery.crd-bootstrap",
-}
-
 // NewResourceManager creates a ResourceManager for the given cluster.
-func NewResourceManager(rcg genericclioptions.RESTClientGetter) (*ssa.ResourceManager, error) {
-	cfg, err := rcg.ToRESTConfig()
-	if err != nil {
-		return nil, fmt.Errorf("loading kubeconfig failed: %w", err)
+func (r *BootstrapReconciler) NewResourceManager(ctx context.Context, obj *v1alpha1.Bootstrap) (*ssa.ResourceManager, error) {
+	ownerRef := ssa.Owner{
+		Field: "delivery",
+		Group: "crd-bootstrap.delivery.crd-bootstrap",
 	}
 
-	// bump limits
-	cfg.QPS = 100.0
-	cfg.Burst = 300
+	statusPoller := polling.NewStatusPoller(r.Client, r.Client.RESTMapper(), polling.Options{})
 
-	restMapper, err := rcg.ToRESTMapper()
+	// Configure the Kubernetes client for impersonation.
+	impersonation := runtimeClient.NewImpersonator(
+		r.Client,
+		statusPoller,
+		polling.Options{},
+		obj.Spec.KubeConfig.SecretRef,
+		runtimeClient.KubeConfigOptions{},
+		r.DefaultServiceAccount,
+		obj.Spec.KubeConfig.ServiceAccount,
+		obj.Namespace,
+	)
+
+	// Create the Kubernetes client that runs under impersonation.
+	kubeClient, poller, err := impersonation.GetClient(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to build kube client: %w", err)
 	}
 
-	kubeClient, err := client.New(cfg, client.Options{Mapper: restMapper, Scheme: newScheme()})
-	if err != nil {
-		return nil, err
-	}
-
-	kubePoller := polling.NewStatusPoller(kubeClient, restMapper, polling.Options{})
-
-	return ssa.NewResourceManager(kubeClient, kubePoller, ownerRef), nil
-}
-
-func newScheme() *apiruntime.Scheme {
-	scheme := apiruntime.NewScheme()
-	_ = apiextensionsv1.AddToScheme(scheme)
-	_ = corev1.AddToScheme(scheme)
-
-	return scheme
+	return ssa.NewResourceManager(kubeClient, poller, ownerRef), nil
 }

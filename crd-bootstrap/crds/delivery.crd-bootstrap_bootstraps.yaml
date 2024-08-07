@@ -47,6 +47,44 @@ spec:
                 description: Interval defines the regular interval at which a poll
                   for new version should happen.
                 type: string
+              kubeConfig:
+                description: KubeConfig defines a kubeconfig that could be used to
+                  access another cluster and apply a CRD there.
+                properties:
+                  secretRef:
+                    description: SecretRef defines a secret with the key in which
+                      the kubeconfig is in.
+                    properties:
+                      secretRef:
+                        description: |-
+                          SecretRef holds the name of a secret that contains a key with
+                          the kubeconfig file as the value. If no key is set, the key will default
+                          to 'value'.
+                          It is recommended that the kubeconfig is self-contained, and the secret
+                          is regularly updated if credentials such as a cloud-access-token expire.
+                          Cloud specific `cmd-path` auth helpers will not function without adding
+                          binaries and credentials to the Pod that is responsible for reconciling
+                          Kubernetes resources.
+                        properties:
+                          key:
+                            description: Key in the Secret, when not specified an
+                              implementation-specific default key is used.
+                            type: string
+                          name:
+                            description: Name of the Secret.
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    required:
+                    - secretRef
+                    type: object
+                  serviceAccount:
+                    description: |-
+                      ServiceAccount defines any custom service accounts to use in order to
+                      apply crds in a remote cluster.
+                    type: string
+                type: object
               prune:
                 description: Prune will clean up all applied objects once the Bootstrap
                   object is removed.

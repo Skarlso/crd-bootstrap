@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
-	"github.com/Skarlso/crd-bootstrap/pkg/source"
 	"github.com/fluxcd/pkg/apis/meta"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
@@ -35,13 +33,15 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+	"github.com/Skarlso/crd-bootstrap/pkg/source"
 )
 
 const (
@@ -53,7 +53,8 @@ type BootstrapReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	SourceProvider source.Contract
+	SourceProvider        source.Contract
+	DefaultServiceAccount string
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -160,8 +161,7 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}()
 
-	kubeconfigArgs := genericclioptions.NewConfigFlags(false)
-	sm, err := NewResourceManager(kubeconfigArgs)
+	sm, err := r.NewResourceManager(ctx, obj)
 	if err != nil {
 		err := fmt.Errorf("failed to create resource manager: %w", err)
 		conditions.MarkFalse(obj, meta.ReadyCondition, "ResourceManagerCreateFailed", err.Error())
@@ -277,7 +277,7 @@ func (r *BootstrapReconciler) validateObjects(ctx context.Context, obj *v1alpha1
 
 		crd := &apiextensions.CustomResourceDefinition{}
 		if err := yaml.Unmarshal(content, crd); err != nil {
-			return fmt.Errorf("failed to unmarshal into custom resource definition")
+			return errors.New("failed to unmarshal into custom resource definition")
 		}
 
 		// Add checking out the api version from the provided template and only eval against that.
