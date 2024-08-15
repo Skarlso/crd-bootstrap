@@ -13,9 +13,7 @@ import (
 
 	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
-	"golang.org/x/oauth2"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/Skarlso/crd-bootstrap/pkg/source/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -108,7 +106,7 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 	// download
 	c := s.Client
 	if obj.Spec.Source.URL.SecretRef != nil {
-		c, err = s.constructAuthenticatedClient(ctx, obj)
+		c, err = auth.ConstructAuthenticatedClient(ctx, s.client, obj.Spec.Source.URL.SecretRef.Name, obj.Namespace)
 		if err != nil {
 			return fmt.Errorf("failed to construct authenticated client: %w", err)
 		}
@@ -137,22 +135,4 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 	}
 
 	return nil
-}
-
-func (s *Source) constructAuthenticatedClient(ctx context.Context, obj *v1alpha1.Bootstrap) (*http.Client, error) {
-	secret := &corev1.Secret{}
-	if err := s.client.Get(ctx, types.NamespacedName{Name: obj.Spec.Source.URL.SecretRef.Name, Namespace: obj.Namespace}, secret); err != nil {
-		return nil, fmt.Errorf("failed to find secret ref for token: %w", err)
-	}
-
-	token, ok := secret.Data["token"]
-	if !ok {
-		return nil, errors.New("token key not found in provided secret")
-	}
-
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: string(token)},
-	)
-
-	return oauth2.NewClient(ctx, ts), nil
 }
