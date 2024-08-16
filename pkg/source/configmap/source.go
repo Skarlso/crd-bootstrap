@@ -68,7 +68,8 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	file := filepath.Join(dir, "crd.yaml")
-	if err := os.WriteFile(file, []byte(content), 0o600); err != nil {
+	const perm = 0o600
+	if err := os.WriteFile(file, []byte(content), perm); err != nil {
 		return "", fmt.Errorf("failed to create crd file from config map: %w", err)
 	}
 

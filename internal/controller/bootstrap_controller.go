@@ -139,20 +139,18 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	temp, err := os.MkdirTemp("", "crd")
 	if err != nil {
-		err := fmt.Errorf("failed to create temp folder: %w", err)
-		conditions.MarkFalse(obj, meta.ReadyCondition, "TempFolderFailedToCreate", err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, "TempFolderFailedToCreate", "failed to create temp directory: %s", err)
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to create temp directory: %w", err)
 	}
 
 	// should probably return a file system / single YAML. Because they can be super large, it's
 	// not vise to store it in memory as a buffer.
 	location, err := r.SourceProvider.FetchCRD(ctx, temp, obj, revision)
 	if err != nil {
-		err := fmt.Errorf("failed to fetch source: %w", err)
-		conditions.MarkFalse(obj, meta.ReadyCondition, "CRDFetchFailed", err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, "CRDFetchFailed", "failed to fetch source: %s", err)
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to fetch source: %w", err)
 	}
 
 	defer func() {
@@ -163,18 +161,16 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	sm, err := r.NewResourceManager(ctx, obj)
 	if err != nil {
-		err := fmt.Errorf("failed to create resource manager: %w", err)
-		conditions.MarkFalse(obj, meta.ReadyCondition, "ResourceManagerCreateFailed", err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, "ResourceManagerCreateFailed", "failed to create resource manager: %s", err)
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to create resource manager: %w", err)
 	}
 
 	objects, err := readObjects(location)
 	if err != nil {
-		err := fmt.Errorf("failed to construct objects to apply: %w", err)
-		conditions.MarkFalse(obj, meta.ReadyCondition, "ReadingObjectsToApplyFailed", err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, "ReadingObjectsToApplyFailed", "failed to construct objects to apply: %s", err)
 
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to construct objects to apply: %w", err)
 	}
 
 	applied := obj.Status.LastAppliedCRDNames
@@ -192,10 +188,10 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if err := r.validateObjects(ctx, obj, objects); err != nil {
 		if !obj.Spec.ContinueOnValidationError {
-			conditions.MarkFalse(obj, meta.ReadyCondition, "CRDValidationFailed", err.Error())
+			conditions.MarkFalse(obj, meta.ReadyCondition, "CRDValidationFailed", "validation failed to on the crd template: %s", err)
 			logger.Error(err, "validation failed to the CRD for the provided template")
 
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		logger.Error(err, "validation failed for the CRD, but continue is set so we'll ignore this error")
@@ -203,14 +199,14 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if _, err := sm.ApplyAllStaged(ctx, objects, ssa.DefaultApplyOptions()); err != nil {
 		err := fmt.Errorf("failed to apply manifests: %w", err)
-		conditions.MarkFalse(obj, meta.ReadyCondition, "ApplyingCRDSFailed", err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, "ApplyingCRDSFailed", "failed to apply all stages: %s", err)
 
 		return ctrl.Result{}, fmt.Errorf("failed to apply all stages: %w", err)
 	}
 
 	if err = sm.Wait(objects, ssa.DefaultWaitOptions()); err != nil {
 		err := fmt.Errorf("failed to wait for objects to be ready: %w", err)
-		conditions.MarkFalse(obj, meta.ReadyCondition, "WaitingOnObjectsFailed", err.Error())
+		conditions.MarkFalse(obj, meta.ReadyCondition, "WaitingOnObjectsFailed", "failed to wait for applied objects: %s", err)
 
 		return ctrl.Result{}, fmt.Errorf("failed to wait for applied objects: %w", err)
 	}
@@ -248,7 +244,7 @@ func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1
 	logger.Info("found number of crds to clean", "number", len(crds.Items))
 
 	for _, item := range crds.Items {
-		logger.V(4).Info("removed CRD", "crd", item.GetName())
+		logger.V(v1alpha1.LogLevelDebug).Info("removed CRD", "crd", item.GetName())
 		if err := r.Delete(ctx, &item); err != nil {
 			return fmt.Errorf("failed to delete object with name %s: %w", item.GetName(), err)
 		}
