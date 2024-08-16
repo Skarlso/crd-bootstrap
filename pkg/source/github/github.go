@@ -114,7 +114,8 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 		}
 	}
 
-	c.Timeout = 15 * time.Second
+	const duration = 15 * time.Second
+	c.Timeout = duration
 
 	baseAPIURL := obj.Spec.Source.GitHub.BaseAPIURL
 	if baseAPIURL == "" {

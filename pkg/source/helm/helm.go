@@ -71,7 +71,8 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	tempHelm := filepath.Join(dir, "helm-temp")
-	if err := os.MkdirAll(tempHelm, 0o755); err != nil {
+	const perm = 0o755
+	if err := os.MkdirAll(tempHelm, perm); err != nil {
 		return "", fmt.Errorf("failed to create temp helm folder: %w", err)
 	}
 	defer os.RemoveAll(tempHelm)
