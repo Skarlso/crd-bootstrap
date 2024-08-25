@@ -11,7 +11,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.6.0
 	github.com/fluxcd/pkg/runtime v0.49.0
 	github.com/fluxcd/pkg/ssa v0.41.0
-	github.com/onsi/ginkgo/v2 v2.20.0
+	github.com/onsi/ginkgo/v2 v2.20.1
 	github.com/onsi/gomega v1.34.1
 	golang.org/x/oauth2 v0.22.0
 	helm.sh/helm/v3 v3.15.4
