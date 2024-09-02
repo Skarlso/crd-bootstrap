@@ -5,8 +5,8 @@ go 1.22.4
 toolchain go1.22.5
 
 require (
-	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/docker/cli v27.1.2+incompatible
+	github.com/Masterminds/semver/v3 v3.3.0
+	github.com/docker/cli v27.2.0+incompatible
 	github.com/fluxcd/cli-utils v0.36.0-flux.9
 	github.com/fluxcd/pkg/apis/meta v1.6.0
 	github.com/fluxcd/pkg/runtime v0.49.0
