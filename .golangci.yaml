@@ -1,5 +1,5 @@
 run:
-  go: "1.22"
+  go: "1.23"
   timeout: 10m
   tests: false
   allow-parallel-runners: true
@@ -24,6 +24,7 @@ linters:
     - gci
     - gochecknoglobals
     - gochecknoinits   # Init functions cause an import to have side effects,
+    - gomoddirectives
     - err113
     - goimports        # acts weirdly, dci handles imports anyway
     - gomnd            # Give constant values a name with constants.
