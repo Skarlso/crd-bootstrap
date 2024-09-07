@@ -1,4 +1,4 @@
-FROM gcr.io/distroless/static:nonroot
+FROM scratch
 WORKDIR /
 COPY crd-bootstrap /manager
 USER 65532:65532
