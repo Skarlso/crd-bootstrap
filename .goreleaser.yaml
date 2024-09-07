@@ -6,8 +6,13 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
     goarch:
       - amd64
+      - arm64
+    goarm:
+      - 6
+      - 7
 archives:
   - name_template: >-
       {{ .ProjectName }}_
@@ -32,10 +37,9 @@ changelog:
       - '^test:'
 # for more information on what this target does: https://goreleaser.com/errors/docker-build/
 dockers:
-  - id: linux-build
+  - id: linux-build-amd64
     image_templates:
-    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}"
-    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:latest"
+    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-amd64"
     # GOOS of the built binary that should be used.
     goos: linux
     # GOARCH of the built binary that should be used.
@@ -43,3 +47,40 @@ dockers:
     dockerfile: "{{ .Env.DOCKERFILE }}"
     build_flag_templates:
     - "--platform=linux/amd64"
+  - id: linux-build-arm64
+    image_templates:
+    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-arm64"
+    # GOOS of the built binary that should be used.
+    goos: linux
+    # GOARCH of the built binary that should be used.
+    goarch: arm64
+    dockerfile: "{{ .Env.DOCKERFILE }}"
+    build_flag_templates:
+    - "--platform=linux/arm64"
+  - id: darwin-build-amd64
+    image_templates:
+    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-darwin-amd64"
+    # GOOS of the built binary that should be used.
+    goos: darwin
+    # GOARCH of the built binary that should be used.
+    goarch: amd64
+    dockerfile: "{{ .Env.DOCKERFILE }}"
+    build_flag_templates:
+    - "--platform=darwin/amd64"
+  - id: darwin-build-arm64
+    image_templates:
+    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-darwin-arm64"
+    # GOOS of the built binary that should be used.
+    goos: darwin
+    # GOARCH of the built binary that should be used.
+    goarch: arm64
+    dockerfile: "{{ .Env.DOCKERFILE }}"
+    build_flag_templates:
+    - "--platform=darwin/arm64"
+docker_manifests:
+  - name_template: "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}"
+    image_templates:
+      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-amd64"
+      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-darwin-amd64"
+      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-arm64"
+      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-darwin-arm64"
