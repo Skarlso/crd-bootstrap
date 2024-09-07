@@ -45,7 +45,6 @@ dockers:
     # GOARCH of the built binary that should be used.
     goarch: amd64
     dockerfile: "{{ .Env.DOCKERFILE }}"
-    use: buildx
     build_flag_templates:
     - "--platform=linux/amd64"
   - id: linux-build-arm64
@@ -56,7 +55,6 @@ dockers:
     # GOARCH of the built binary that should be used.
     goarch: arm64
     dockerfile: "{{ .Env.DOCKERFILE }}"
-    use: buildx
     build_flag_templates:
     - "--platform=linux/arm64"
   - id: darwin-build-amd64
@@ -67,7 +65,6 @@ dockers:
     # GOARCH of the built binary that should be used.
     goarch: amd64
     dockerfile: "{{ .Env.DOCKERFILE }}"
-    use: buildx
     build_flag_templates:
     - "--platform=darwin/amd64"
   - id: darwin-build-arm64
@@ -78,7 +75,6 @@ dockers:
     # GOARCH of the built binary that should be used.
     goarch: arm64
     dockerfile: "{{ .Env.DOCKERFILE }}"
-    use: buildx
     build_flag_templates:
     - "--platform=darwin/arm64"
 docker_manifests:
