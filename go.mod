@@ -1,6 +1,9 @@
 module github.com/Skarlso/crd-bootstrap
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.2
+
 replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
