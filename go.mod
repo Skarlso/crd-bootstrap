@@ -13,7 +13,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.9.0
 	github.com/fluxcd/pkg/runtime v0.51.1
 	github.com/fluxcd/pkg/ssa v0.43.0
-	golang.org/x/oauth2 v0.24.0
+	golang.org/x/oauth2 v0.25.0
 	helm.sh/helm/v3 v3.15.4
 	k8s.io/api v0.32.0
 	k8s.io/apiextensions-apiserver v0.32.0
