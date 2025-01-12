@@ -11,7 +11,7 @@ require (
 	github.com/docker/cli v27.4.1+incompatible
 	github.com/fluxcd/cli-utils v0.36.0-flux.11
 	github.com/fluxcd/pkg/apis/meta v1.9.0
-	github.com/fluxcd/pkg/runtime v0.51.1
+	github.com/fluxcd/pkg/runtime v0.52.0
 	github.com/fluxcd/pkg/ssa v0.43.0
 	golang.org/x/oauth2 v0.25.0
 	helm.sh/helm/v3 v3.15.4
@@ -20,7 +20,7 @@ require (
 	k8s.io/apimachinery v0.32.0
 	k8s.io/client-go v0.32.0
 	oras.land/oras-go v1.2.6
-	sigs.k8s.io/controller-runtime v0.19.3
+	sigs.k8s.io/controller-runtime v0.19.4
 )
 
 require (
@@ -51,6 +51,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
