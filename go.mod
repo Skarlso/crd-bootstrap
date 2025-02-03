@@ -10,9 +10,9 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/docker/cli v27.5.1+incompatible
 	github.com/fluxcd/cli-utils v0.36.0-flux.12
-	github.com/fluxcd/pkg/apis/meta v1.9.0
-	github.com/fluxcd/pkg/runtime v0.52.0
-	github.com/fluxcd/pkg/ssa v0.43.0
+	github.com/fluxcd/pkg/apis/meta v1.10.0
+	github.com/fluxcd/pkg/runtime v0.53.0
+	github.com/fluxcd/pkg/ssa v0.44.0
 	golang.org/x/oauth2 v0.25.0
 	helm.sh/helm/v3 v3.17.0
 	k8s.io/api v0.32.1
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.18.0 // indirect
+	cel.dev/expr v0.19.1 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20240806141605-e8a1dd7889d6 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
@@ -62,7 +62,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
-	github.com/google/cel-go v0.22.0 // indirect
+	github.com/google/cel-go v0.23.1 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -140,7 +140,7 @@ require (
 	k8s.io/kubectl v0.32.1 // indirect
 	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
-	sigs.k8s.io/kustomize/api v0.18.0 // indirect
+	sigs.k8s.io/kustomize/api v0.19.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.19.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
