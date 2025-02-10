@@ -12,8 +12,8 @@ require (
 	github.com/fluxcd/cli-utils v0.36.0-flux.12
 	github.com/fluxcd/pkg/apis/meta v1.10.0
 	github.com/fluxcd/pkg/runtime v0.53.0
-	github.com/fluxcd/pkg/ssa v0.44.0
-	golang.org/x/oauth2 v0.25.0
+	github.com/fluxcd/pkg/ssa v0.45.0
+	golang.org/x/oauth2 v0.26.0
 	helm.sh/helm/v3 v3.17.0
 	k8s.io/api v0.32.1
 	k8s.io/apiextensions-apiserver v0.32.1
