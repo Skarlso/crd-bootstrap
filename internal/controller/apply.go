@@ -54,12 +54,9 @@ func (r *BootstrapReconciler) NewResourceManager(ctx context.Context, obj *v1alp
 		Group: "crd-bootstrap.delivery.crd-bootstrap",
 	}
 
-	statusPoller := polling.NewStatusPoller(r.Client, r.Client.RESTMapper(), polling.Options{})
-
 	// Configure the Kubernetes client for impersonation.
 	impersonation := runtimeClient.NewImpersonator(
 		r.Client,
-		statusPoller,
 		polling.Options{},
 		obj.Spec.KubeConfig.SecretRef,
 		runtimeClient.KubeConfigOptions{},
