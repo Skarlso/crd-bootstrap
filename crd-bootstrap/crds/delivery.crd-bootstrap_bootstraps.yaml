@@ -51,6 +51,10 @@ spec:
                 description: KubeConfig defines a kubeconfig that could be used to
                   access another cluster and apply a CRD there.
                 properties:
+                  namespace:
+                    description: Namespace defines an optional namespace where the
+                      KubeConfig should be at.
+                    type: string
                   secretRef:
                     description: SecretRef defines a secret with the key in which
                       the kubeconfig is in.

@@ -37,6 +37,8 @@ type KubeConfig struct {
 	// SecretRef defines a secret with the key in which the kubeconfig is in.
 	// +optional
 	SecretRef *meta.KubeConfigReference `json:"secretRef,omitempty"`
+	// Namespace defines an optional namespace where the KubeConfig should be at.
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // GitHub defines a GitHub type source where the CRD is coming from `release` section of a GitHub repository.
