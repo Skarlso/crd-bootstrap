@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fluxcd/cli-utils/pkg/kstatus/polling"
 	runtimeClient "github.com/fluxcd/pkg/runtime/client"
 	"github.com/fluxcd/pkg/ssa"
 	"github.com/fluxcd/pkg/ssa/utils"
@@ -57,12 +56,8 @@ func (r *BootstrapReconciler) NewResourceManager(ctx context.Context, obj *v1alp
 	// Configure the Kubernetes client for impersonation.
 	impersonation := runtimeClient.NewImpersonator(
 		r.Client,
-		polling.Options{},
-		obj.Spec.KubeConfig.SecretRef,
-		runtimeClient.KubeConfigOptions{},
-		r.DefaultServiceAccount,
-		obj.Spec.KubeConfig.ServiceAccount,
-		obj.Namespace,
+		runtimeClient.WithServiceAccount(r.DefaultServiceAccount, obj.Spec.KubeConfig.ServiceAccount, obj.Namespace),
+		runtimeClient.WithKubeConfig(obj.Spec.KubeConfig.SecretRef, runtimeClient.KubeConfigOptions{}, obj.Spec.KubeConfig.Namespace),
 	)
 
 	// Create the Kubernetes client that runs under impersonation.

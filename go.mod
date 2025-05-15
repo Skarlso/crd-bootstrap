@@ -7,7 +7,6 @@ replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/docker/cli v28.1.1+incompatible
-	github.com/fluxcd/cli-utils v0.36.0-flux.13
 	github.com/fluxcd/pkg/apis/meta v1.11.0
 	github.com/fluxcd/pkg/runtime v0.59.0
 	github.com/fluxcd/pkg/ssa v0.46.0
@@ -48,6 +47,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fluxcd/cli-utils v0.36.0-flux.13 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-errors/errors v1.5.1 // indirect
