@@ -53,11 +53,22 @@ func (r *BootstrapReconciler) NewResourceManager(ctx context.Context, obj *v1alp
 		Group: "crd-bootstrap.delivery.crd-bootstrap",
 	}
 
+	var serviceAccountName string
+	if obj.Spec.KubeConfig != nil {
+		serviceAccountName = obj.Spec.KubeConfig.ServiceAccount
+	}
+
+	opts := []runtimeClient.ImpersonatorOption{
+		runtimeClient.WithServiceAccount(r.DefaultServiceAccount, serviceAccountName, obj.Namespace),
+	}
+	if obj.Spec.KubeConfig != nil {
+		opts = append(opts, runtimeClient.WithKubeConfig(obj.Spec.KubeConfig.SecretRef, runtimeClient.KubeConfigOptions{}, obj.Spec.KubeConfig.Namespace))
+	}
+
 	// Configure the Kubernetes client for impersonation.
 	impersonation := runtimeClient.NewImpersonator(
 		r.Client,
-		runtimeClient.WithServiceAccount(r.DefaultServiceAccount, obj.Spec.KubeConfig.ServiceAccount, obj.Namespace),
-		runtimeClient.WithKubeConfig(obj.Spec.KubeConfig.SecretRef, runtimeClient.KubeConfigOptions{}, obj.Spec.KubeConfig.Namespace),
+		opts...,
 	)
 
 	// Create the Kubernetes client that runs under impersonation.
