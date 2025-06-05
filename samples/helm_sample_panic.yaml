@@ -1,0 +1,12 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: kube-prometheus-stack
+spec:
+  interval: 10s
+  source:
+    helm:
+      chartReference: https://prometheus-community.github.io/helm-charts
+      chartName: kube-prometheus-stack
+  version:
+    semver: 73.1.0

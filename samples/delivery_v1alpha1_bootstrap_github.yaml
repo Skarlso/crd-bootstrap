@@ -12,7 +12,7 @@ metadata:
 spec:
   interval: 10s
   source:
-    gitHub:
+    github:
       owner: fluxcd
       repo: flux2
       manifest: install.yaml
