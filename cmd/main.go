@@ -17,9 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -35,6 +38,7 @@ import (
 
 	deliveryv1alpha1 "github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/internal/controller"
+	webhookserver "github.com/Skarlso/crd-bootstrap/internal/webhook"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/configmap"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/github"
 	"github.com/Skarlso/crd-bootstrap/pkg/source/gitlab"
@@ -60,12 +64,14 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var defaultServiceAccount string
+	var webhookPort int
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
+	flag.IntVar(&webhookPort, "webhook-port", 8082, "The port the webhook server binds to.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -74,14 +80,14 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	webhookPort := 9443
+	kubebuilderWebhookPort := 9443
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress: metricsAddr,
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: webhookPort,
+			Port: kubebuilderWebhookPort,
 		}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
@@ -92,21 +98,79 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create webhook server
+	webhookSrv := webhookserver.NewServer(mgr.GetClient(), webhookPort)
+
+	// Start webhook server in a goroutine
+	go func() {
+		if err := webhookSrv.Start(context.Background()); err != nil {
+			setupLog.Error(err, "failed to start webhook server")
+			os.Exit(1)
+		}
+	}()
+
 	c := http.DefaultClient
 	urlProvider := url.NewSource(c, mgr.GetClient(), nil)
 	githubProvider := github.NewSource(c, mgr.GetClient(), urlProvider)
 	gitlabProvider := gitlab.NewSource(c, mgr.GetClient(), githubProvider)
 	configMapProvider := configmap.NewSource(mgr.GetClient(), gitlabProvider)
 	helmProvider := helm.NewSource(c, mgr.GetClient(), configMapProvider)
+
+	// Setup webhook trigger registry
+	webhookTriggers := make(map[string]<-chan struct{})
+
 	if err = (&controller.BootstrapReconciler{
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
 		SourceProvider:        helmProvider,
 		DefaultServiceAccount: defaultServiceAccount,
+		WebhookTriggers:       webhookTriggers,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Bootstrap")
 		os.Exit(1)
 	}
+
+	// Setup webhook trigger registration
+	go func() {
+		ctx := context.Background()
+		for {
+			bootstrapList := &deliveryv1alpha1.BootstrapList{}
+			if err := mgr.GetClient().List(ctx, bootstrapList); err != nil {
+				setupLog.Error(err, "failed to list Bootstrap objects for webhook registration")
+				continue
+			}
+
+			for _, bootstrap := range bootstrapList.Items {
+				if bootstrap.Spec.Webhook != nil && bootstrap.Spec.Webhook.Enabled {
+					key := fmt.Sprintf("%s/%s", bootstrap.Namespace, bootstrap.Name)
+					if _, exists := webhookTriggers[key]; !exists {
+						ch := webhookSrv.RegisterBootstrap(bootstrap.Name, bootstrap.Namespace)
+						webhookTriggers[key] = ch
+						setupLog.Info("registered webhook trigger", "bootstrap", key)
+					}
+				}
+			}
+
+			// Clean up triggers for deleted bootstraps
+			for key := range webhookTriggers {
+				found := false
+				for _, bootstrap := range bootstrapList.Items {
+					bootstrapKey := fmt.Sprintf("%s/%s", bootstrap.Namespace, bootstrap.Name)
+					if key == bootstrapKey && bootstrap.Spec.Webhook != nil && bootstrap.Spec.Webhook.Enabled {
+						found = true
+						break
+					}
+				}
+				if !found {
+					delete(webhookTriggers, key)
+					setupLog.Info("unregistered webhook trigger", "bootstrap", key)
+				}
+			}
+
+			// Check every 30 seconds
+			time.Sleep(30 * time.Second)
+		}
+	}()
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

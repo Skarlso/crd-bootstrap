@@ -1,0 +1,33 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-webhook-helm
+  namespace: crd-bootstrap-system
+spec:
+  # Mixed mode - webhooks with fallback polling every 6 hours
+  interval: 6h
+  source:
+    helm:
+      chartReference: oci://ghcr.io/skarlso/helm/crd-bootstrap
+      chartName: crd-bootstrap
+      secretRef:
+        name: helm-credentials
+  version:
+    semver: ">=v0.4.0"
+  webhook:
+    enabled: true
+    path: /webhook/bootstrap-sample-webhook-helm
+    # Simple token-based authentication via headers
+    headers:
+      Authorization: Bearer my-webhook-token
+      X-Webhook-Source: helm-registry
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: helm-credentials
+  namespace: crd-bootstrap-system
+type: kubernetes.io/dockerconfigjson
+data:
+  # Replace with your actual docker config (base64 encoded)
+  .dockerconfigjson: eyJhdXRocyI6eyJnaGNyLmlvIjp7InVzZXJuYW1lIjoiU2thcmxzbyIsInBhc3N3b3JkIjoiZ2hwX3h4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==","email":"example@example.com"}}}

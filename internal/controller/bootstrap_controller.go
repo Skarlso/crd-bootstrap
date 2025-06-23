@@ -55,6 +55,7 @@ type BootstrapReconciler struct {
 
 	SourceProvider        source.Contract
 	DefaultServiceAccount string
+	WebhookTriggers       map[string]<-chan struct{}
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -121,6 +122,29 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}()
 
+	// Check if webhook is enabled and wait for webhook trigger
+	if obj.Spec.Webhook != nil && obj.Spec.Webhook.Enabled {
+		key := fmt.Sprintf("%s/%s", obj.Namespace, obj.Name)
+		if triggerCh, exists := r.WebhookTriggers[key]; exists {
+			logger.Info("waiting for webhook trigger...")
+			select {
+			case <-triggerCh:
+				logger.Info("webhook trigger received, proceeding with reconciliation")
+			case <-ctx.Done():
+				return ctrl.Result{}, ctx.Err()
+			default:
+				// No webhook trigger yet, use fallback interval if configured
+				if obj.Spec.Interval.Duration > 0 {
+					logger.Info("no webhook trigger, using fallback interval")
+				} else {
+					logger.Info("no webhook trigger and no fallback interval, skipping reconciliation")
+					conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Waiting for webhook trigger")
+					return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
+				}
+			}
+		}
+	}
+
 	update, revision, err := r.SourceProvider.HasUpdate(ctx, obj)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to check version: %w", err)
@@ -129,6 +153,11 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !update {
 		logger.Info("no update was required...")
 		conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd(s)")
+
+		// If webhook is enabled, don't requeue unless fallback interval is set
+		if obj.Spec.Webhook != nil && obj.Spec.Webhook.Enabled && obj.Spec.Interval.Duration == 0 {
+			return ctrl.Result{}, nil
+		}
 
 		return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
 	}
@@ -217,6 +246,11 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	conditions.MarkTrue(obj, meta.ReadyCondition, meta.SucceededReason, "Successfully applied crd(s)")
 
 	logger.Info("all done")
+
+	// If webhook is enabled, don't requeue unless fallback interval is set
+	if obj.Spec.Webhook != nil && obj.Spec.Webhook.Enabled && obj.Spec.Interval.Duration == 0 {
+		return ctrl.Result{}, nil
+	}
 
 	return ctrl.Result{RequeueAfter: obj.GetRequeueAfter()}, nil
 }

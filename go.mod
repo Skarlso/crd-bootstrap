@@ -10,6 +10,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.13.0
 	github.com/fluxcd/pkg/runtime v0.60.0
 	github.com/fluxcd/pkg/ssa v0.48.0
+	github.com/gorilla/mux v1.8.1
 	golang.org/x/oauth2 v0.30.0
 	helm.sh/helm/v3 v3.18.3
 	k8s.io/api v0.33.2
@@ -64,7 +65,6 @@ require (
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

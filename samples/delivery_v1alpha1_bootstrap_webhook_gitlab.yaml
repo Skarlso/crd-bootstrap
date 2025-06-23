@@ -1,0 +1,45 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-webhook-gitlab
+  namespace: crd-bootstrap-system
+spec:
+  # No fallback interval - webhook only
+  source:
+    gitlab:
+      baseAPIURL: https://gitlab.com/api/v4
+      owner: Skarlso
+      repo: gitlab-test-1
+      manifest: manifest.yaml
+      secretRef:
+        name: gitlab-token
+  version:
+    semver: ">=v0.0.1"
+  webhook:
+    enabled: true
+    secret:
+      name: gitlab-webhook-secret
+      namespace: crd-bootstrap-system
+      secretKey: secret
+    headers:
+      X-Gitlab-Event: Release Hook
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitlab-webhook-secret
+  namespace: crd-bootstrap-system
+type: Opaque
+data:
+  # Replace with your actual webhook secret (base64 encoded)
+  secret: Z2l0bGFiLXNlY3JldC1rZXk=  # "gitlab-secret-key"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitlab-token
+  namespace: crd-bootstrap-system
+type: Opaque
+data:
+  # Replace with your actual GitLab token (base64 encoded)
+  token: Z2xwYXRfeHh4eHh4eHh4eHh4eHh4eHh4eA==  # "glpat_xxxxxxxxxxxxxxxx"

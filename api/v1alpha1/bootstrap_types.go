@@ -155,9 +155,51 @@ type Version struct {
 	Digest string `json:"digest,omitempty"`
 }
 
+// WebhookConfig defines webhook configuration for immediate updates.
+type WebhookConfig struct {
+	// Enabled determines if webhook-based updates are enabled.
+	// When enabled, the controller will listen for webhook calls instead of polling.
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Path defines the webhook endpoint path. Defaults to "/webhook/<bootstrap-name>".
+	// +optional
+	Path string `json:"path,omitempty"`
+
+	// Secret defines authentication for the webhook endpoint.
+	// +optional
+	Secret *WebhookSecret `json:"secret,omitempty"`
+
+	// Headers defines required headers for webhook authentication.
+	// +optional
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// WebhookSecret defines authentication credentials for webhook endpoints.
+type WebhookSecret struct {
+	// Name of the secret containing webhook credentials.
+	// +required
+	Name string `json:"name"`
+
+	// Namespace of the secret. Defaults to Bootstrap object namespace.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// TokenKey defines the key in the secret containing the auth token.
+	// Defaults to "token".
+	// +optional
+	TokenKey string `json:"tokenKey,omitempty"`
+
+	// SecretKey defines the key in the secret containing the webhook secret for HMAC validation.
+	// Defaults to "secret".
+	// +optional
+	SecretKey string `json:"secretKey,omitempty"`
+}
+
 // BootstrapSpec defines the desired state of Bootstrap.
 type BootstrapSpec struct {
 	// Interval defines the regular interval at which a poll for new version should happen.
+	// When webhook is enabled, this serves as a fallback interval.
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 
@@ -186,6 +228,10 @@ type BootstrapSpec struct {
 	// KubeConfig defines a kubeconfig that could be used to access another cluster and apply a CRD there.
 	// +optional
 	KubeConfig *KubeConfig `json:"kubeConfig,omitempty"`
+
+	// Webhook defines webhook configuration for immediate updates instead of polling.
+	// +optional
+	Webhook *WebhookConfig `json:"webhook,omitempty"`
 }
 
 // BootstrapStatus defines the observed state of Bootstrap.

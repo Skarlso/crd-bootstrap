@@ -1,0 +1,47 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample-webhook-github
+  namespace: crd-bootstrap-system
+spec:
+  # Fallback interval - only used if webhook fails
+  interval: 1h
+  source:
+    github:
+      owner: krok-o
+      repo: operator
+      manifest: install.yaml
+      secretRef:
+        name: github-token
+  version:
+    semver: ">=v1"
+  webhook:
+    enabled: true
+    # Path defaults to /webhook/<bootstrap-name>
+    path: /webhook/bootstrap-sample-webhook-github
+    secret:
+      name: github-webhook-secret
+      namespace: crd-bootstrap-system
+      secretKey: secret  # Key containing HMAC secret
+    headers:
+      X-GitHub-Event: release
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-webhook-secret
+  namespace: crd-bootstrap-system
+type: Opaque
+data:
+  # Replace with your actual webhook secret (base64 encoded)
+  secret: bXktc2VjcmV0LWtleQ==  # "my-secret-key"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token
+  namespace: crd-bootstrap-system
+type: Opaque
+data:
+  # Replace with your actual GitHub token (base64 encoded)
+  token: Z2hwX3h4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eA==  # "ghp_xxxxxxxxxxxxxxxxxxxxxxx"

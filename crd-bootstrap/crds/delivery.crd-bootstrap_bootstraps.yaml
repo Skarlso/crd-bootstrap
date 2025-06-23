@@ -44,8 +44,9 @@ spec:
                   if the validation failed for it.
                 type: boolean
               interval:
-                description: Interval defines the regular interval at which a poll
-                  for new version should happen.
+                description: |-
+                  Interval defines the regular interval at which a poll for new version should happen.
+                  When webhook is enabled, this serves as a fallback interval.
                 type: string
               kubeConfig:
                 description: KubeConfig defines a kubeconfig that could be used to
@@ -267,6 +268,48 @@ spec:
                   semver:
                     description: Semver defines a possible constraint like `>=v1`.
                     type: string
+                type: object
+              webhook:
+                description: Webhook defines webhook configuration for immediate updates
+                  instead of polling.
+                properties:
+                  enabled:
+                    description: |-
+                      Enabled determines if webhook-based updates are enabled.
+                      When enabled, the controller will listen for webhook calls instead of polling.
+                    type: boolean
+                  headers:
+                    additionalProperties:
+                      type: string
+                    description: Headers defines required headers for webhook authentication.
+                    type: object
+                  path:
+                    description: Path defines the webhook endpoint path. Defaults
+                      to "/webhook/<bootstrap-name>".
+                    type: string
+                  secret:
+                    description: Secret defines authentication for the webhook endpoint.
+                    properties:
+                      name:
+                        description: Name of the secret containing webhook credentials.
+                        type: string
+                      namespace:
+                        description: Namespace of the secret. Defaults to Bootstrap
+                          object namespace.
+                        type: string
+                      secretKey:
+                        description: |-
+                          SecretKey defines the key in the secret containing the webhook secret for HMAC validation.
+                          Defaults to "secret".
+                        type: string
+                      tokenKey:
+                        description: |-
+                          TokenKey defines the key in the secret containing the auth token.
+                          Defaults to "token".
+                        type: string
+                    required:
+                    - name
+                    type: object
                 type: object
             required:
             - source
