@@ -5,11 +5,11 @@ go 1.24.1
 replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
-	github.com/Masterminds/semver/v3 v3.3.1
-	github.com/docker/cli v28.2.2+incompatible
+	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/docker/cli v28.3.0+incompatible
 	github.com/fluxcd/pkg/apis/meta v1.13.0
-	github.com/fluxcd/pkg/runtime v0.60.0
-	github.com/fluxcd/pkg/ssa v0.48.0
+	github.com/fluxcd/pkg/runtime v0.62.0
+	github.com/fluxcd/pkg/ssa v0.49.0
 	golang.org/x/oauth2 v0.30.0
 	helm.sh/helm/v3 v3.18.3
 	k8s.io/api v0.33.2
