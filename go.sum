@@ -63,8 +63,8 @@ github.com/distribution/distribution/v3 v3.0.0 h1:q4R8wemdRQDClzoNNStftB2ZAfqOiN
 github.com/distribution/distribution/v3 v3.0.0/go.mod h1:tRNuFoZsUdyRVegq8xGNeds4KLjwLCRin/tTo6i1DhU=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=
 github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
-github.com/docker/cli v28.3.0+incompatible h1:s+ttruVLhB5ayeuf2BciwDVxYdKi+RoUlxmwNHV3Vfo=
-github.com/docker/cli v28.3.0+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
+github.com/docker/cli v28.3.1+incompatible h1:ZUdwOLDEBoE3TE5rdC9IXGY5HPHksJK3M+hJEWhh2mc=
+github.com/docker/cli v28.3.1+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
 github.com/docker/distribution v2.8.3+incompatible h1:AtKxIZ36LoNK51+Z6RpzLpddBirtxJnzDrHLEKxTAYk=
 github.com/docker/distribution v2.8.3+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/docker v27.2.0+incompatible h1:Rk9nIVdfH3+Vz4cyI/uhbINhEZ/oLmc+CBXmH6fbNk4=
@@ -93,8 +93,8 @@ github.com/fluxcd/cli-utils v0.36.0-flux.13 h1:2X5yjz/rk9mg7+bMFBDZKGKzeZpAmY2s6
 github.com/fluxcd/cli-utils v0.36.0-flux.13/go.mod h1:b2iSoIeDTtjfCB0IKtGgqlhhvWa1oux3e90CjOf81oA=
 github.com/fluxcd/pkg/apis/meta v1.13.0 h1:KKYdXFzEmSuM8CP1Zqpt68IF+jqQILeiDiTmXI7DMTM=
 github.com/fluxcd/pkg/apis/meta v1.13.0/go.mod h1:+son1Va60x2eiDcTwd7lcctbI6C+K3gM7R+ULmEq1SI=
-github.com/fluxcd/pkg/runtime v0.62.0 h1:7/ZW4WgT23HDySqx+MRzefoh/1XlW9D/7siAlE20SQw=
-github.com/fluxcd/pkg/runtime v0.62.0/go.mod h1:7pxGvaU0Yy1cDIUhiHAHhCx2yCLnkcVsplbYZG6j4JY=
+github.com/fluxcd/pkg/runtime v0.63.0 h1:55J7ascGmXyTXWGwhD21N9fU7jC1l5rhdzjgNXs6aZg=
+github.com/fluxcd/pkg/runtime v0.63.0/go.mod h1:7pxGvaU0Yy1cDIUhiHAHhCx2yCLnkcVsplbYZG6j4JY=
 github.com/fluxcd/pkg/ssa v0.49.0 h1:3xBMxWQIpmKu+zUmyuKQ9M4f+ALhbMJIkiLXeGkhig4=
 github.com/fluxcd/pkg/ssa v0.49.0/go.mod h1:T50TO0U2obLodZnrFgOrxollfBEy4V673OkM2aTUF1c=
 github.com/foxcpp/go-mockdns v1.1.0 h1:jI0rD8M0wuYAxL7r/ynTrCQQq0BVqfB99Vgk7DlmewI=
