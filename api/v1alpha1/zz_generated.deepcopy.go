@@ -240,7 +240,7 @@ func (in *KubeConfig) DeepCopyInto(out *KubeConfig) {
 	if in.SecretRef != nil {
 		in, out := &in.SecretRef, &out.SecretRef
 		*out = new(meta.KubeConfigReference)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 }
 
