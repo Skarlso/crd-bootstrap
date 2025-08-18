@@ -62,7 +62,7 @@ func (r *BootstrapReconciler) NewResourceManager(ctx context.Context, obj *v1alp
 		runtimeClient.WithServiceAccount(r.DefaultServiceAccount, serviceAccountName, obj.Namespace),
 	}
 	if obj.Spec.KubeConfig != nil {
-		opts = append(opts, runtimeClient.WithKubeConfig(obj.Spec.KubeConfig.SecretRef, runtimeClient.KubeConfigOptions{}, obj.Spec.KubeConfig.Namespace))
+		opts = append(opts, runtimeClient.WithKubeConfig(obj.Spec.KubeConfig.SecretRef, runtimeClient.KubeConfigOptions{}, obj.Spec.KubeConfig.Namespace, nil))
 	}
 
 	// Configure the Kubernetes client for impersonation.
