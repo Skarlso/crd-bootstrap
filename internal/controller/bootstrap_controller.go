@@ -51,6 +51,7 @@ const (
 // BootstrapReconciler reconciles a Bootstrap object.
 type BootstrapReconciler struct {
 	client.Client
+
 	Scheme *runtime.Scheme
 
 	SourceProvider        source.Contract
@@ -92,7 +93,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 
-		if err := r.reconcileDelete(ctx, obj); err != nil {
+		err := r.reconcileDelete(ctx, obj)
+		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to delete bootstrap: %w", err)
 		}
 
@@ -116,7 +118,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		obj.Status.ObservedGeneration = obj.Generation
 
 		// Set status observed generation option if the object is stalled or ready.
-		if perr := patchHelper.Patch(ctx, obj); perr != nil {
+		perr := patchHelper.Patch(ctx, obj)
+		if perr != nil {
 			err = errors.Join(err, perr)
 		}
 	}()
@@ -154,7 +157,8 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	defer func() {
-		if oerr := os.RemoveAll(temp); oerr != nil {
+		oerr := os.RemoveAll(temp)
+		if oerr != nil {
 			err = errors.Join(err, oerr)
 		}
 	}()
@@ -235,9 +239,11 @@ func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1
 	logger.Info("cleaning owned CRDS...")
 
 	crds := &v1.CustomResourceDefinitionList{}
-	if err := r.List(ctx, crds, client.MatchingLabels(map[string]string{
+
+	err := r.List(ctx, crds, client.MatchingLabels(map[string]string{
 		v1alpha1.BootstrapOwnerLabelKey: obj.GetName(),
-	})); err != nil {
+	}))
+	if err != nil {
 		return fmt.Errorf("failed to list owned CRDS: %w", err)
 	}
 
@@ -245,6 +251,7 @@ func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1
 
 	for _, item := range crds.Items {
 		logger.V(v1alpha1.LogLevelDebug).Info("removed CRD", "crd", item.GetName())
+
 		if err := r.Delete(ctx, &item); err != nil {
 			return fmt.Errorf("failed to delete object with name %s: %w", item.GetName(), err)
 		}
@@ -284,7 +291,8 @@ func (r *BootstrapReconciler) validateObjects(ctx context.Context, obj *v1alpha1
 			}
 
 			if v, ok := obj.Spec.Template[crd.Spec.Names.Kind]; ok {
-				if err := eval.Validate(v).AsError(); err != nil {
+				err := eval.Validate(v).AsError()
+				if err != nil {
 					return fmt.Errorf("failed to validate kind %s: %w", crd.Spec.Names.Kind, err)
 				}
 			}

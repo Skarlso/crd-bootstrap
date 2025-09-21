@@ -41,14 +41,15 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	if err := s.fetch(ctx, dir, obj); err != nil {
+	err := s.fetch(ctx, dir, obj)
+	if err != nil {
 		return "", fmt.Errorf("failed to fetch CRD: %w", err)
 	}
 
 	return filepath.Join(dir, "crds.yaml"), nil
 }
 
-func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, string, error) {
+func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (_ bool, _ string, err error) {
 	if obj.Spec.Source.URL == nil {
 		if s.next == nil {
 			return false, "", errors.New("github isn't defined and there are no other sources configured")
@@ -62,13 +63,17 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 		return false, "", fmt.Errorf("failed to create temp folder: %w", err)
 	}
 
-	defer os.RemoveAll(dir)
+	defer func() {
+		if rerr := os.RemoveAll(dir); rerr != nil {
+			err = errors.Join(err, rerr)
+		}
+	}()
 
 	if err := s.fetch(ctx, dir, obj); err != nil {
 		return false, "", fmt.Errorf("failed to fetch CRD: %w", err)
 	}
 
-	file, err := os.Open(filepath.Join(dir, "crds.yaml"))
+	file, err := os.Open(filepath.Clean(filepath.Join(dir, "crds.yaml")))
 	if err != nil {
 		return false, "", fmt.Errorf("failed to open file of downloaded CRD: %w", err)
 	}
@@ -96,8 +101,9 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 }
 
 // fetch fetches the content.
-func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap) error {
+func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap) (err error) {
 	downloadURL := obj.Spec.Source.URL.URL
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request for %s, error: %w", downloadURL, err)
@@ -116,19 +122,28 @@ func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap)
 	if err != nil {
 		return fmt.Errorf("failed to download content from %s, error: %w", downloadURL, err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	// check response
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download content from %s, status: %s", downloadURL, resp.Status)
 	}
 
-	wf, err := os.Create(filepath.Join(dir, "crds.yaml"))
+	wf, err := os.Create(filepath.Clean(filepath.Join(dir, "crds.yaml")))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
 
-	defer wf.Close()
+	defer func() {
+		if cerr := wf.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if _, err := io.Copy(wf, resp.Body); err != nil {
 		return fmt.Errorf("failed to write to temp file: %w", err)

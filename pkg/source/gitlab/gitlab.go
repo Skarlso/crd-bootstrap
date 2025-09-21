@@ -48,7 +48,8 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	if err := s.fetch(ctx, revision, dir, obj); err != nil {
+	err := s.fetch(ctx, revision, dir, obj)
+	if err != nil {
 		return "", fmt.Errorf("failed to fetch CRD: %w", err)
 	}
 
@@ -103,11 +104,13 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 }
 
 // getLatestVersion calls the gitlab API and returns the latest released version.
-func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
+func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (_ string, err error) {
 	logger := log.FromContext(ctx)
 	c := s.Client
+
 	if obj.Spec.Source.GitLab.SecretRef != nil {
 		var err error
+
 		c, err = auth.ConstructAuthenticatedClient(ctx, s.client, obj.Spec.Source.GitLab.SecretRef.Name, obj.Namespace)
 		if err != nil {
 			return "", fmt.Errorf("failed to construct authenticated client: %w", err)
@@ -115,6 +118,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	}
 
 	const duration = 15 * time.Second
+
 	c.Timeout = duration
 
 	baseAPIURL := obj.Spec.Source.GitLab.BaseAPIURL
@@ -129,9 +133,11 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 
 	body, err := s.fetchURLContent(ctx, c, latestURL)
 	// immediately check even in case of error.
-	if body != nil {
-		defer body.Close()
-	}
+	defer func() {
+		if cerr := body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if err != nil {
 		return "", fmt.Errorf("failed to read url content: %w", err)
@@ -140,6 +146,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	type meta struct {
 		Tag string `json:"tag_name"`
 	}
+
 	var m meta
 	if err := json.NewDecoder(body).Decode(&m); err != nil {
 		return "", fmt.Errorf("decoding gitlab API response failed: %w", err)
@@ -163,6 +170,7 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 
 	// construct client
 	var err error
+
 	client := s.Client
 	if obj.Spec.Source.GitLab.SecretRef != nil {
 		client, err = auth.ConstructAuthenticatedClient(ctx, s.client, obj.Spec.Source.GitLab.SecretRef.Name, obj.Namespace)
@@ -174,9 +182,12 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 	downloadURL := fmt.Sprintf("%s/projects/%s%s%s/releases/%s", baseAPIURL, obj.Spec.Source.GitLab.Owner, "%2F", obj.Spec.Source.GitLab.Repo, version)
 	body, err := s.fetchURLContent(ctx, client, downloadURL)
 	// immediately check even in case of error.
-	if body != nil {
-		defer body.Close()
-	}
+	defer func() {
+		if cerr := body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
+
 	if err != nil {
 		return fmt.Errorf("failed to download url content: %w", err)
 	}
@@ -194,12 +205,14 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 			} `json:"links"`
 		} `json:"assets"`
 	}
+
 	var assets meta
 	if err := json.Unmarshal(content, &assets); err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 
 	var assetURL string
+
 	for _, a := range assets.Assets.Links {
 		if a.Name == obj.Spec.Source.GitLab.Manifest {
 			assetURL = a.URL
@@ -207,25 +220,33 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 			break
 		}
 	}
+
 	if assetURL == "" {
 		return fmt.Errorf("asset link not found under release assets in release with name %s", obj.Spec.Source.GitLab.Manifest)
 	}
 
 	assetBody, err := s.fetchURLContent(ctx, client, assetURL)
 	// immediately check even in case of error.
-	if assetBody != nil {
-		defer assetBody.Close()
-	}
+	defer func() {
+		if cerr := assetBody.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
+
 	if err != nil {
 		return fmt.Errorf("failed to download url content: %w", err)
 	}
 
-	wf, err := os.Create(filepath.Join(dir, obj.Spec.Source.GitLab.Manifest))
+	wf, err := os.Create(filepath.Clean(filepath.Join(dir, obj.Spec.Source.GitLab.Manifest)))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
 
-	defer wf.Close()
+	defer func() {
+		if cerr := wf.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	// stream the asset content into a temp file
 	if _, err := io.Copy(wf, assetBody); err != nil {

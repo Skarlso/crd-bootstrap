@@ -247,7 +247,8 @@ type Bootstrap struct {
 type BootstrapList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Bootstrap `json:"items"`
+
+	Items []Bootstrap `json:"items"`
 }
 
 func init() {

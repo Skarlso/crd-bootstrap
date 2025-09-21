@@ -3,8 +3,10 @@ package controller
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	runtimeClient "github.com/fluxcd/pkg/runtime/client"
 	"github.com/fluxcd/pkg/ssa"
@@ -16,20 +18,26 @@ import (
 
 // readObjects takes a path to a file that contains one or more CRDs and created a list of
 // unstructured objects out of them.
-func readObjects(manifestPath string) ([]*unstructured.Unstructured, error) {
+func readObjects(manifestPath string) (_ []*unstructured.Unstructured, err error) {
 	fi, err := os.Lstat(manifestPath)
 	if err != nil {
 		return nil, err
 	}
+
 	if fi.IsDir() || !fi.Mode().IsRegular() {
 		return nil, fmt.Errorf("expected %q to be a file", manifestPath)
 	}
 
-	ms, err := os.Open(manifestPath)
+	ms, err := os.Open(filepath.Clean(manifestPath))
 	if err != nil {
 		return nil, err
 	}
-	defer ms.Close()
+
+	defer func() {
+		if cerr := ms.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	objects, err := utils.ReadObjects(bufio.NewReader(ms))
 	if err != nil {
@@ -37,6 +45,7 @@ func readObjects(manifestPath string) ([]*unstructured.Unstructured, error) {
 	}
 	// Make sure we only returns custom resource definitions. We don't want any errand objects be applied to the cluster.
 	crds := make([]*unstructured.Unstructured, 0)
+
 	for _, obj := range objects {
 		if obj.GetKind() == "CustomResourceDefinition" {
 			crds = append(crds, obj)
