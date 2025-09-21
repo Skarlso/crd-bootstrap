@@ -46,10 +46,11 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	configMap := &v1.ConfigMap{}
-	if err := s.client.Get(ctx, types.NamespacedName{
+	err := s.client.Get(ctx, types.NamespacedName{
 		Name:      obj.Spec.Source.ConfigMap.Name,
 		Namespace: obj.Spec.Source.ConfigMap.Namespace,
-	}, configMap); err != nil {
+	}, configMap)
+	if err != nil {
 		return "", fmt.Errorf("failed to find config map: %w", err)
 	}
 
@@ -68,6 +69,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	file := filepath.Join(dir, "crd.yaml")
+
 	const perm = 0o600
 	if err := os.WriteFile(file, []byte(content), perm); err != nil {
 		return "", fmt.Errorf("failed to create crd file from config map: %w", err)
@@ -103,6 +105,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 	if !ok {
 		return false, "", errors.New("version key not defined in configmap")
 	}
+
 	latestVersionSemver, err := semver.NewVersion(latestVersion)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to parse current config map version '%s' as semver: %w", latestVersion, err)

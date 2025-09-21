@@ -48,7 +48,8 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	if err := s.fetch(ctx, revision, dir, obj); err != nil {
+	err := s.fetch(ctx, revision, dir, obj)
+	if err != nil {
 		return "", fmt.Errorf("failed to fetch CRD: %w", err)
 	}
 
@@ -106,8 +107,10 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
 	logger := log.FromContext(ctx)
 	c := s.Client
+
 	if obj.Spec.Source.GitHub.SecretRef != nil {
 		var err error
+
 		c, err = auth.ConstructAuthenticatedClient(ctx, s.client, obj.Spec.Source.GitHub.SecretRef.Name, obj.Namespace)
 		if err != nil {
 			return "", fmt.Errorf("failed to construct authenticated client: %w", err)
@@ -115,6 +118,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	}
 
 	const duration = 15 * time.Second
+
 	c.Timeout = duration
 
 	baseAPIURL := obj.Spec.Source.GitHub.BaseAPIURL
@@ -153,6 +157,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 	type meta struct {
 		Tag string `json:"tag_name"`
 	}
+
 	var m meta
 	if err := json.NewDecoder(res.Body).Decode(&m); err != nil {
 		return "", fmt.Errorf("decoding GitHub API response failed: %w", err)

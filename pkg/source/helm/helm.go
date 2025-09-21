@@ -55,8 +55,11 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	var out strings.Builder
-	var options []getter.Option
+	var (
+		out     strings.Builder
+		options []getter.Option
+	)
+
 	download := &downloader.ChartDownloader{
 		Out:     &out,
 		Verify:  downloader.VerifyNever,
@@ -65,13 +68,16 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	if obj.Spec.Source.Helm.SecretRef != nil {
-		if err := s.configureCredentials(ctx, obj, download); err != nil {
+		err := s.configureCredentials(ctx, obj, download)
+		if err != nil {
 			return "", err
 		}
 	}
 
 	tempHelm := filepath.Join(dir, "helm-temp")
+
 	const perm = 0o755
+
 	if err := os.MkdirAll(tempHelm, perm); err != nil {
 		return "", fmt.Errorf("failed to create temp helm folder: %w", err)
 	}
@@ -83,7 +89,8 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
-		if err := chartutil.ExpandFile(tempHelm, outputPath); err != nil {
+		err := chartutil.ExpandFile(tempHelm, outputPath)
+		if err != nil {
 			return "", fmt.Errorf("failed ot untar: %w", err)
 		}
 	}
@@ -97,12 +104,14 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 
 func (s *Source) configureCredentials(ctx context.Context, obj *v1alpha1.Bootstrap, download *downloader.ChartDownloader) error {
 	secret := &v1.Secret{}
-	if err := s.client.Get(ctx, types.NamespacedName{Name: obj.Spec.Source.Helm.SecretRef.Name, Namespace: obj.Namespace}, secret); err != nil {
+	err := s.client.Get(ctx, types.NamespacedName{Name: obj.Spec.Source.Helm.SecretRef.Name, Namespace: obj.Namespace}, secret)
+	if err != nil {
 		return fmt.Errorf("failed to find attached secret: %w", err)
 	}
 
 	if registry.IsOCI(obj.Spec.Source.Helm.ChartReference) {
-		if err := s.configureOCICredentials(secret, obj.Spec.Source.Helm.ChartReference, download); err != nil {
+		err := s.configureOCICredentials(secret, obj.Spec.Source.Helm.ChartReference, download)
+		if err != nil {
 			return fmt.Errorf("failed to configure oci repository: %w", err)
 		}
 	} else {
@@ -110,6 +119,7 @@ func (s *Source) configureCredentials(ctx context.Context, obj *v1alpha1.Bootstr
 		if !ok {
 			return errors.New("missing password key")
 		}
+
 		username, ok := secret.Data[v1alpha1.UsernameKey]
 		if !ok {
 			return errors.New("missing username key")
@@ -207,6 +217,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 	}
 
 	latestRemoteVersion := s.getLatestVersion(versions, constrains)
+
 	latestVersionSemver, err := semver.NewVersion(latestRemoteVersion)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to parse current version '%s' as semver: %w", latestRemoteVersion, err)
@@ -269,11 +280,14 @@ func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alp
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct repository: %w", err)
 	}
+
 	if chartRef.SecretRef != nil {
-		if err := s.configureTransportForOCIRepo(ctx, src, chartRef.SecretRef, namespace); err != nil {
+		err := s.configureTransportForOCIRepo(ctx, src, chartRef.SecretRef, namespace)
+		if err != nil {
 			return nil, fmt.Errorf("failed to configure transport client: %w", err)
 		}
 	}
+
 	if err := src.Tags(context.Background(), func(tags []string) error {
 		versions = append(versions, tags...)
 
@@ -300,7 +314,8 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1
 
 	if chartRef.SecretRef != nil {
 		secret := &v1.Secret{}
-		if err := s.client.Get(ctx, types.NamespacedName{Name: chartRef.SecretRef.Name, Namespace: namespace}, secret); err != nil {
+		err := s.client.Get(ctx, types.NamespacedName{Name: chartRef.SecretRef.Name, Namespace: namespace}, secret)
+		if err != nil {
 			return nil, fmt.Errorf("failed to find attached secret: %w", err)
 		}
 
@@ -364,10 +379,12 @@ func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.R
 	if err := s.client.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: namespace}, secret); err != nil {
 		return fmt.Errorf("failed to find attached secret: %w", err)
 	}
+
 	config, ok := secret.Data[v1alpha1.DockerJSONConfigKey]
 	if !ok {
 		return errors.New("password wasn't defined in given secret")
 	}
+
 	tmpConfig, err := os.CreateTemp("", "config.json")
 	if err != nil {
 		return fmt.Errorf("failed to create a temp config: %w", err)
@@ -375,10 +392,12 @@ func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.R
 	defer os.Remove(tmpConfig.Name())
 
 	host := src.Reference.Host()
+
 	conf := configfile.New(tmpConfig.Name())
 	if err := conf.LoadFromReader(strings.NewReader(string(config))); err != nil {
 		return fmt.Errorf("failed to parse the config: %w", err)
 	}
+
 	authForHost, ok := conf.AuthConfigs[host]
 	if !ok {
 		return fmt.Errorf("failed to find auth configuration for host %s", host)
@@ -410,16 +429,19 @@ func (s *Source) configureOCICredentials(secret *v1.Secret, ref string, download
 	}
 
 	defer os.Remove(tmpConfig.Name())
+
 	src, err := remote.NewRepository(strings.TrimPrefix(ref, "oci://"))
 	if err != nil {
 		return fmt.Errorf("failed to construct repository: %w", err)
 	}
 
 	host := src.Reference.Host()
+
 	conf := configfile.New(tmpConfig.Name())
 	if err := conf.LoadFromReader(strings.NewReader(string(config))); err != nil {
 		return fmt.Errorf("failed to parse the config: %w", err)
 	}
+
 	if err := conf.Save(); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}

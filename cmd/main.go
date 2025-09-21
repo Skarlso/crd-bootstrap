@@ -56,16 +56,20 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var defaultServiceAccount string
+	var (
+		metricsAddr           string
+		enableLeaderElection  bool
+		probeAddr             string
+		defaultServiceAccount string
+	)
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.StringVar(&defaultServiceAccount, "default-service-account", "", "Default service account used for impersonation.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -75,6 +79,7 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	webhookPort := 9443
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
@@ -97,6 +102,7 @@ func main() {
 	githubProvider := github.NewSource(c, mgr.GetClient(), urlProvider)
 	gitlabProvider := gitlab.NewSource(c, mgr.GetClient(), githubProvider)
 	configMapProvider := configmap.NewSource(mgr.GetClient(), gitlabProvider)
+
 	helmProvider := helm.NewSource(c, mgr.GetClient(), configMapProvider)
 	if err = (&controller.BootstrapReconciler{
 		Client:                mgr.GetClient(),
@@ -113,12 +119,14 @@ func main() {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
+
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
 
 	setupLog.Info("starting manager")
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

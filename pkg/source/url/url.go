@@ -41,7 +41,8 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 		return s.next.FetchCRD(ctx, dir, obj, revision)
 	}
 
-	if err := s.fetch(ctx, dir, obj); err != nil {
+	err := s.fetch(ctx, dir, obj)
+	if err != nil {
 		return "", fmt.Errorf("failed to fetch CRD: %w", err)
 	}
 
@@ -98,6 +99,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 // fetch fetches the content.
 func (s *Source) fetch(ctx context.Context, dir string, obj *v1alpha1.Bootstrap) error {
 	downloadURL := obj.Spec.Source.URL.URL
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request for %s, error: %w", downloadURL, err)
