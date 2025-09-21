@@ -15,8 +15,7 @@ import (
 // ConstructAuthenticatedClient creates an authenticated http Client.
 func ConstructAuthenticatedClient(ctx context.Context, client client.Client, name, namespace string) (*http.Client, error) {
 	secret := &corev1.Secret{}
-	err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret)
-	if err != nil {
+	if err := client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {
 		return nil, fmt.Errorf("failed to find secret ref for token: %w", err)
 	}
 

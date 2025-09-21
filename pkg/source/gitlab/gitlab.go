@@ -104,7 +104,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 }
 
 // getLatestVersion calls the gitlab API and returns the latest released version.
-func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
+func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (_ string, err error) {
 	logger := log.FromContext(ctx)
 	c := s.Client
 
@@ -133,9 +133,11 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 
 	body, err := s.fetchURLContent(ctx, c, latestURL)
 	// immediately check even in case of error.
-	if body != nil {
-		defer body.Close()
-	}
+	defer func() {
+		if cerr := body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if err != nil {
 		return "", fmt.Errorf("failed to read url content: %w", err)
@@ -180,9 +182,11 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 	downloadURL := fmt.Sprintf("%s/projects/%s%s%s/releases/%s", baseAPIURL, obj.Spec.Source.GitLab.Owner, "%2F", obj.Spec.Source.GitLab.Repo, version)
 	body, err := s.fetchURLContent(ctx, client, downloadURL)
 	// immediately check even in case of error.
-	if body != nil {
-		defer body.Close()
-	}
+	defer func() {
+		if cerr := body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if err != nil {
 		return fmt.Errorf("failed to download url content: %w", err)
@@ -223,20 +227,26 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 
 	assetBody, err := s.fetchURLContent(ctx, client, assetURL)
 	// immediately check even in case of error.
-	if assetBody != nil {
-		defer assetBody.Close()
-	}
+	defer func() {
+		if cerr := assetBody.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if err != nil {
 		return fmt.Errorf("failed to download url content: %w", err)
 	}
 
-	wf, err := os.Create(filepath.Join(dir, obj.Spec.Source.GitLab.Manifest))
+	wf, err := os.Create(filepath.Clean(filepath.Join(dir, obj.Spec.Source.GitLab.Manifest)))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
 
-	defer wf.Close()
+	defer func() {
+		if cerr := wf.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	// stream the asset content into a temp file
 	if _, err := io.Copy(wf, assetBody); err != nil {

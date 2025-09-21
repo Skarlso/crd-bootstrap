@@ -104,7 +104,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 }
 
 // getLatestVersion calls the GitHub API and returns the latest released version.
-func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (string, error) {
+func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) (_ string, err error) {
 	logger := log.FromContext(ctx)
 	c := s.Client
 
@@ -139,9 +139,11 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 		return "", fmt.Errorf("GitHub API call failed: %w", err)
 	}
 
-	if res.Body != nil {
-		defer res.Body.Close()
-	}
+	defer func() {
+		if berr := res.Body.Close(); berr != nil {
+			err = errors.Join(err, berr)
+		}
+	}()
 
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		content, err := io.ReadAll(res.Body)
@@ -171,7 +173,7 @@ func (s *Source) getLatestVersion(ctx context.Context, obj *v1alpha1.Bootstrap) 
 }
 
 // fetch fetches the content.
-func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) error {
+func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.Bootstrap) (err error) {
 	baseURL := obj.Spec.Source.GitHub.BaseURL
 	if baseURL == "" {
 		baseURL = githubBase
@@ -198,19 +200,28 @@ func (s *Source) fetch(ctx context.Context, version, dir string, obj *v1alpha1.B
 	if err != nil {
 		return fmt.Errorf("failed to download %s from %s, error: %w", obj.Spec.Source.GitHub.Manifest, downloadURL, err)
 	}
-	defer resp.Body.Close()
+
+	defer func() {
+		if berr := resp.Body.Close(); berr != nil {
+			err = errors.Join(err, berr)
+		}
+	}()
 
 	// check response
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download %s from %s, status: %s", obj.Spec.Source.GitHub.Manifest, downloadURL, resp.Status)
 	}
 
-	wf, err := os.Create(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest))
+	wf, err := os.Create(filepath.Clean(filepath.Join(dir, obj.Spec.Source.GitHub.Manifest)))
 	if err != nil {
 		return fmt.Errorf("failed to open temp file: %w", err)
 	}
 
-	defer wf.Close()
+	defer func() {
+		if cerr := wf.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if _, err := io.Copy(wf, resp.Body); err != nil {
 		return fmt.Errorf("failed to write to temp file: %w", err)

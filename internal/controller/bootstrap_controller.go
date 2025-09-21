@@ -239,6 +239,7 @@ func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1
 	logger.Info("cleaning owned CRDS...")
 
 	crds := &v1.CustomResourceDefinitionList{}
+
 	err := r.List(ctx, crds, client.MatchingLabels(map[string]string{
 		v1alpha1.BootstrapOwnerLabelKey: obj.GetName(),
 	}))
@@ -250,9 +251,8 @@ func (r *BootstrapReconciler) reconcileDelete(ctx context.Context, obj *v1alpha1
 
 	for _, item := range crds.Items {
 		logger.V(v1alpha1.LogLevelDebug).Info("removed CRD", "crd", item.GetName())
-		err := r.Delete(ctx, &item)
 
-		if err != nil {
+		if err := r.Delete(ctx, &item); err != nil {
 			return fmt.Errorf("failed to delete object with name %s: %w", item.GetName(), err)
 		}
 	}

@@ -46,6 +46,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	}
 
 	configMap := &v1.ConfigMap{}
+
 	err := s.client.Get(ctx, types.NamespacedName{
 		Name:      obj.Spec.Source.ConfigMap.Name,
 		Namespace: obj.Spec.Source.ConfigMap.Namespace,

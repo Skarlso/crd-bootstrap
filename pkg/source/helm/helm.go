@@ -46,7 +46,7 @@ func NewSource(c *http.Client, client client.Client, next source.Contract) *Sour
 	return &Source{Client: c, client: client, next: next}
 }
 
-func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (string, error) {
+func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstrap, revision string) (_ string, err error) {
 	if obj.Spec.Source.Helm == nil {
 		if s.next == nil {
 			return "", errors.New("helm isn't defined and there are no other sources configured")
@@ -81,7 +81,12 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 	if err := os.MkdirAll(tempHelm, perm); err != nil {
 		return "", fmt.Errorf("failed to create temp helm folder: %w", err)
 	}
-	defer os.RemoveAll(tempHelm)
+
+	defer func() {
+		if rerr := os.RemoveAll(tempHelm); rerr != nil {
+			err = errors.Join(err, rerr)
+		}
+	}()
 
 	outputPath, _, err := download.DownloadTo(obj.Spec.Source.Helm.ChartReference, revision, tempHelm)
 	if err != nil {
@@ -104,6 +109,7 @@ func (s *Source) FetchCRD(ctx context.Context, dir string, obj *v1alpha1.Bootstr
 
 func (s *Source) configureCredentials(ctx context.Context, obj *v1alpha1.Bootstrap, download *downloader.ChartDownloader) error {
 	secret := &v1.Secret{}
+
 	err := s.client.Get(ctx, types.NamespacedName{Name: obj.Spec.Source.Helm.SecretRef.Name, Namespace: obj.Namespace}, secret)
 	if err != nil {
 		return fmt.Errorf("failed to find attached secret: %w", err)
@@ -134,12 +140,17 @@ func (s *Source) configureCredentials(ctx context.Context, obj *v1alpha1.Bootstr
 	return nil
 }
 
-func (s *Source) createCrdYaml(dir string, tempHelm string) error {
-	crds, err := os.Create(filepath.Join(dir, "crds.yaml"))
+func (s *Source) createCrdYaml(dir string, tempHelm string) (err error) {
+	crds, err := os.Create(filepath.Clean(filepath.Join(dir, "crds.yaml")))
 	if err != nil {
 		return fmt.Errorf("failed to create crds bundle file: %w", err)
 	}
-	defer crds.Close()
+
+	defer func() {
+		if cerr := crds.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	// find all yaml files that contain CRDs in them and append to the end result.
 	if err := filepath.Walk(tempHelm, func(path string, info fs.FileInfo, err error) error {
@@ -152,9 +163,8 @@ func (s *Source) createCrdYaml(dir string, tempHelm string) error {
 			if err != nil {
 				return fmt.Errorf("failed to read CRDs folder: %w", err)
 			}
-
 			for _, f := range files {
-				content, err := os.ReadFile(filepath.Join(path, f.Name()))
+				content, err := os.ReadFile(filepath.Clean(filepath.Join(path, f.Name())))
 				if err != nil {
 					return fmt.Errorf("failed to read file %s: %w", filepath.Join(path, f.Name()), err)
 				}
@@ -299,7 +309,7 @@ func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alp
 	return versions, nil
 }
 
-func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1alpha1.Helm, namespace string) ([]string, error) {
+func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1alpha1.Helm, namespace string) (_ []string, err error) {
 	u, err := url.JoinPath(chartRef.ChartReference, "index.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("failed to join path: %w", err)
@@ -314,6 +324,7 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1
 
 	if chartRef.SecretRef != nil {
 		secret := &v1.Secret{}
+
 		err := s.client.Get(ctx, types.NamespacedName{Name: chartRef.SecretRef.Name, Namespace: namespace}, secret)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find attached secret: %w", err)
@@ -334,9 +345,11 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1
 		return nil, fmt.Errorf("status code returned is invalid %d", resp.StatusCode)
 	}
 
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	// leaving dir empty will create a temp dir
 	tempFile, err := os.CreateTemp("", "index.yaml")
@@ -344,7 +357,11 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1
 		return nil, fmt.Errorf("failed to create temp file for response: %w", err)
 	}
 
-	defer tempFile.Close()
+	defer func() {
+		if cerr := tempFile.Close(); cerr != nil {
+			err = errors.Join(err, cerr)
+		}
+	}()
 
 	if _, err := io.Copy(tempFile, resp.Body); err != nil {
 		return nil, fmt.Errorf("failed to copy content to file: %w", err)
@@ -374,7 +391,7 @@ func (s *Source) findVersionsForHTTPRepository(ctx context.Context, chartRef *v1
 	return versions, nil
 }
 
-func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.Repository, ref *v1.LocalObjectReference, namespace string) error {
+func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.Repository, ref *v1.LocalObjectReference, namespace string) (err error) {
 	secret := &v1.Secret{}
 	if err := s.client.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: namespace}, secret); err != nil {
 		return fmt.Errorf("failed to find attached secret: %w", err)
@@ -389,7 +406,12 @@ func (s *Source) configureTransportForOCIRepo(ctx context.Context, src *remote.R
 	if err != nil {
 		return fmt.Errorf("failed to create a temp config: %w", err)
 	}
-	defer os.Remove(tmpConfig.Name())
+
+	defer func() {
+		if rerr := os.Remove(tmpConfig.Name()); rerr != nil {
+			err = errors.Join(err, rerr)
+		}
+	}()
 
 	host := src.Reference.Host()
 
@@ -428,7 +450,11 @@ func (s *Source) configureOCICredentials(secret *v1.Secret, ref string, download
 		return fmt.Errorf("failed to create a temp config: %w", err)
 	}
 
-	defer os.Remove(tmpConfig.Name())
+	defer func() {
+		if rerr := os.Remove(tmpConfig.Name()); rerr != nil {
+			err = errors.Join(err, rerr)
+		}
+	}()
 
 	src, err := remote.NewRepository(strings.TrimPrefix(ref, "oci://"))
 	if err != nil {

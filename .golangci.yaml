@@ -20,9 +20,11 @@ linters:
     - exhaustive       # Doesn't really make sense.
     - exhaustruct      # Doesn't really make sense.
     - forcetypeassert  # Priority: that can lead to serious crashes.
+    - funcorder
     - funlen           # Break long functions.
     - gochecknoglobals
     - gochecknoinits   # Init functions cause an import to have side effects,
+    - gomoddirectives
     - err113
     - interfacebloat
     - ireturn          # Accept interface, return concrate.
@@ -30,6 +32,7 @@ linters:
     - loggercheck         # Doesn't really make sense.
     - nestif           # Some nexted if statements are 8 or 9 deep.
     - nilnil           # A function should return either something valuable
+    - noinlineerr
     - nonamedreturns   # Either named return, or use simply `return`.
     - paralleltest
     - rowserrcheck
