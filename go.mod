@@ -6,10 +6,10 @@ replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/docker/cli v28.4.0+incompatible
+	github.com/docker/cli v28.5.0+incompatible
 	github.com/fluxcd/pkg/apis/meta v1.21.0
 	github.com/fluxcd/pkg/runtime v0.86.0
-	github.com/fluxcd/pkg/ssa v0.58.0
+	github.com/fluxcd/pkg/ssa v0.59.0
 	golang.org/x/oauth2 v0.31.0
 	helm.sh/helm/v3 v3.19.0
 	k8s.io/api v0.34.1
