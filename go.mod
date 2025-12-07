@@ -6,7 +6,7 @@ replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
-	github.com/docker/cli v28.5.2+incompatible
+	github.com/docker/cli v29.1.2+incompatible
 	github.com/fluxcd/pkg/apis/meta v1.23.0
 	github.com/fluxcd/pkg/runtime v0.91.0
 	github.com/fluxcd/pkg/ssa v0.61.0
