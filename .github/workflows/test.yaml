@@ -40,7 +40,7 @@ jobs:
       - name: Install chart unittest
         run: |
           helm env
-          helm plugin install https://github.com/helm-unittest/helm-unittest
+          helm plugin install https://github.com/helm-unittest/helm-unittest --verify=false
       - name: Run lint
         run: make lint
       - name: Run tests
