@@ -24,8 +24,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"oras.land/oras-go/pkg/registry/remote"
-	"oras.land/oras-go/pkg/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
@@ -264,10 +264,10 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 // getLatestVersion selects all the versions that match the constraint and gets back the latest.
 func (s *Source) getLatestVersion(versions []string, constraint *semver.Constraints) string {
 	semvers := make([]*semver.Version, 0)
+
 	for _, v := range versions {
 		semv, err := semver.NewVersion(v)
 		if err != nil {
-			// log and continue
 			continue
 		}
 
@@ -298,7 +298,7 @@ func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alp
 		}
 	}
 
-	if err := src.Tags(context.Background(), func(tags []string) error {
+	if err := src.Tags(ctx, "", func(tags []string) error {
 		versions = append(versions, tags...)
 
 		return nil

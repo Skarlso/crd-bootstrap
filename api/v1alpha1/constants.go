@@ -1,9 +1,11 @@
 package v1alpha1
 
 const (
-	// Helm security access keys.
+	// UsernameKey represents the name of the key for username field.
 	UsernameKey         = "username"
+	// PasswordKey represents the name of the key for password field.
 	PasswordKey         = "password"
+	// DockerJSONConfigKey represents the name of the key for dockerjsonconfig field.
 	DockerJSONConfigKey = ".dockerconfigjson"
 )
 
