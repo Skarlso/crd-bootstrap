@@ -30,6 +30,7 @@ linters:
     - ireturn          # Accept interface, return concrate.
     - lll
     - loggercheck         # Doesn't really make sense.
+    - modernize
     - nestif           # Some nexted if statements are 8 or 9 deep.
     - nilnil           # A function should return either something valuable
     - noinlineerr
