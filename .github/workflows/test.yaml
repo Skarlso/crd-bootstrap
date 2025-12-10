@@ -43,7 +43,12 @@ jobs:
           helm plugin install https://github.com/helm-unittest/helm-unittest --verify=false
       - name: Run lint
         run: make lint
-      - name: Run tests
-        run: make test
       - name: Run helm test
         run: make helm-test
+      - name: Install Kind
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: v0.29.0
+      - name: Run e2e tests
+        run: |
+          cd e2e && go test -v ./... -timeout 30m -count 1
