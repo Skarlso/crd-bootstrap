@@ -29,7 +29,7 @@ jobs:
         with:
           tinygo-version: '0.29.0'
       - name: Restore Go cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /home/runner/work/_temp/_github_home/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -46,7 +46,7 @@ jobs:
       - name: Run helm test
         run: make helm-test
       - name: Install Kind
-        uses: engineerd/setup-kind@v0.5.0
+        uses: engineerd/setup-kind@v0.6.1
         with:
           version: v0.29.0
       - name: Run e2e tests
