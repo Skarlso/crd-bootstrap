@@ -25,9 +25,6 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: '${{ github.workspace }}/go.mod'
-      - uses: acifani/setup-tinygo@v2
-        with:
-          tinygo-version: '0.29.0'
       - name: Restore Go cache
         uses: actions/cache@v5
         with:
@@ -45,10 +42,8 @@ jobs:
         run: make lint
       - name: Run helm test
         run: make helm-test
-      - name: Install Kind
-        uses: engineerd/setup-kind@v0.6.1
-        with:
-          version: v0.29.0
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1
       - name: Run e2e tests
         run: |
           cd e2e && go test -v ./... -timeout 30m -count 1
