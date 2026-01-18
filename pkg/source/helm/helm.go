@@ -159,19 +159,8 @@ func (s *Source) createCrdYaml(dir string, tempHelm string) (err error) {
 		}
 
 		if info.Name() == "crds" && info.IsDir() {
-			files, err := os.ReadDir(path)
-			if err != nil {
-				return fmt.Errorf("failed to read CRDs folder: %w", err)
-			}
-			for _, f := range files {
-				content, err := os.ReadFile(filepath.Clean(filepath.Join(path, f.Name())))
-				if err != nil {
-					return fmt.Errorf("failed to read file %s: %w", filepath.Join(path, f.Name()), err)
-				}
-
-				_, _ = crds.WriteString("---\n")
-				_, _ = crds.Write(content)
-			}
+			// append files from all folders that are possibly under the crds folder
+			return s.appendFilesToCrds(path, crds)
 		}
 
 		return nil
@@ -242,7 +231,7 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 	if constraint.Check(latestVersionSemver) {
 		if obj.Status.LastAppliedRevision != "" {
 			// we know this could be a digest, we don't allow switching forms in a bootstrap.
-			// i.e.: configmap was used as a source, but we switched to URL instead.
+			// i.e.: ConfigMap was used as a source, but we switched to URL instead.
 			lastAppliedRevisionSemver, err := semver.NewVersion(obj.Status.LastAppliedRevision)
 			if err != nil {
 				return false, "", fmt.Errorf("failed to parse last applied revision '%s': %w", obj.Status.LastAppliedRevision, err)
@@ -514,4 +503,26 @@ func (s *Source) configureHTTPCredentials(ctx context.Context, secret *v1.Secret
 	)
 
 	return oauth2.NewClient(ctx, ts), nil
+}
+
+func (s *Source) appendFilesToCrds(root string, crds *os.File) error {
+	return filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		content, err := os.ReadFile(filepath.Clean(path))
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		_, _ = crds.WriteString("---\n")
+		_, _ = crds.Write(content)
+
+		return nil
+	})
 }
