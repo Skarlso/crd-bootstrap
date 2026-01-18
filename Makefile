@@ -58,6 +58,10 @@ vet: ## Run go vet against code.
 e2e-test: manifests generate fmt vet envtest ## Run tests.
 	go test -v ./e2e/... -timeout 10m -count 1
 
+.PHONY: test
+test: ## Run unit tests.
+	go test -v ./pkg/... -timeout 10m -count 1
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint.
 	$(GOLANGCI_LINT) run
