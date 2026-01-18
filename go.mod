@@ -10,6 +10,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.24.0
 	github.com/fluxcd/pkg/runtime v0.94.0
 	github.com/fluxcd/pkg/ssa v0.62.0
+	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.34.0
 	helm.sh/helm/v3 v3.19.4
 	k8s.io/api v0.35.0
