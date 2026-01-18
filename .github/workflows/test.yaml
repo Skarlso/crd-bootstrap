@@ -42,6 +42,8 @@ jobs:
         run: make lint
       - name: Run helm test
         run: make helm-test
+      - name: Run unit tests
+        run: make test
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1
       - name: Run e2e tests
