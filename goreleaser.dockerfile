@@ -1,6 +1,7 @@
 FROM alpine
+ARG TARGETPLATFORM
 WORKDIR /
-COPY ./crd-bootstrap /manager
+COPY ${TARGETPLATFORM}/crd-bootstrap /manager
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]
