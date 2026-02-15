@@ -5,7 +5,7 @@ metadata:
   namespace: crd-bootstrap-system
 spec:
   interval: 10s
-  updatePolicy: force
+  ignoreBreakingChanges: true
   source:
     configMap:
       name: crd-bootstrap-breaking-updated

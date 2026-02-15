@@ -191,25 +191,23 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		applied[o.GetName()]++
 	}
 
-	if obj.Spec.UpdatePolicy != "" {
-		breakingChanges, berr := r.detectBreakingChanges(ctx, objects)
-		if berr != nil {
-			conditions.MarkFalse(obj, meta.ReadyCondition, "BreakingChangeDetectionFailed", "failed to detect breaking changes: %s", berr)
+	breakingChanges, berr := r.detectBreakingChanges(ctx, objects)
+	if berr != nil {
+		conditions.MarkFalse(obj, meta.ReadyCondition, "BreakingChangeDetectionFailed", "failed to detect breaking changes: %s", berr)
 
-			return ctrl.Result{}, fmt.Errorf("failed to detect breaking changes: %w", berr)
+		return ctrl.Result{}, fmt.Errorf("failed to detect breaking changes: %w", berr)
+	}
+
+	obj.Status.BreakingChanges = breakingChanges
+
+	if len(breakingChanges) > 0 {
+		if !obj.Spec.IgnoreBreakingChanges {
+			conditions.MarkFalse(obj, meta.ReadyCondition, "BreakingChangeDetected", "breaking schema changes detected")
+
+			return ctrl.Result{}, fmt.Errorf("breaking schema changes detected: %v", breakingChanges)
 		}
 
-		obj.Status.BreakingChanges = breakingChanges
-
-		if len(breakingChanges) > 0 {
-			if obj.Spec.UpdatePolicy == v1alpha1.UpdatePolicySafe {
-				conditions.MarkFalse(obj, meta.ReadyCondition, "BreakingChangeDetected", "breaking schema changes detected; blocked by safe update policy")
-
-				return ctrl.Result{}, fmt.Errorf("breaking schema changes detected: %v", breakingChanges)
-			}
-
-			logger.Info("breaking changes detected but force policy is set, proceeding", "breakingChanges", breakingChanges)
-		}
+		logger.Info("breaking changes detected but ignoreBreakingChanges is set, proceeding", "breakingChanges", breakingChanges)
 	}
 
 	if err := r.validateObjects(ctx, obj, objects); err != nil {

@@ -297,6 +297,37 @@ There is also an option to define a ServiceAccount for impersonating in the targ
 Once the secret is defined and used the CRD should be applied in the target cluster. All further operations should
 function as is.
 
+## Breaking Change Detection
+
+Before applying a CRD update, crd-bootstrap compares the OpenAPI v3 schema of the incoming CRD against the currently
+installed version. If breaking changes are detected (removed fields, type changes, removed versions, etc.), the update
+is blocked by default and the `Ready` condition is set to `False` with reason `BreakingChangeDetected`.
+
+Detected breaking changes are surfaced in `.status.breakingChanges` for inspection.
+
+To allow the update despite breaking changes, set `ignoreBreakingChanges: true`:
+
+```yaml
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-sample
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  ignoreBreakingChanges: true
+  source:
+    configMap:
+      name: crd-bootstrap-sample
+      namespace: crd-bootstrap-system
+  version:
+    semver: ">=1.0.0"
+```
+
+When `ignoreBreakingChanges` is `true`, breaking changes are logged but the CRD is applied anyway.
+
+If the CRD does not yet exist in the cluster (first install), no comparison is performed.
+
 ## Contributing
 
 Contributions are always welcomed.
