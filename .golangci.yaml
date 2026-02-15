@@ -45,6 +45,7 @@ linters:
     - wastedassign
     - wrapcheck
     - wsl
+    - wsl_v5
 
   settings:
     funlen:

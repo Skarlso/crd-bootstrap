@@ -43,6 +43,11 @@ spec:
                 description: ContinueOnValidationError will still apply a CRD even
                   if the validation failed for it.
                 type: boolean
+              ignoreBreakingChanges:
+                description: |-
+                  IgnoreBreakingChanges when set to true will log detected breaking schema changes but apply anyway.
+                  By default, breaking changes block the update.
+                type: boolean
               interval:
                 description: Interval defines the regular interval at which a poll
                   for new version should happen.
@@ -317,6 +322,12 @@ spec:
           status:
             description: BootstrapStatus defines the observed state of Bootstrap.
             properties:
+              breakingChanges:
+                description: BreakingChanges contains detected breaking schema changes
+                  when UpdatePolicy is set.
+                items:
+                  type: string
+                type: array
               conditions:
                 description: Conditions contains the conditions of this object.
                 items:

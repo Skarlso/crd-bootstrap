@@ -183,6 +183,11 @@ type BootstrapSpec struct {
 	// +optional
 	Prune bool `json:"prune,omitempty"`
 
+	// IgnoreBreakingChanges when set to true will log detected breaking schema changes but apply anyway.
+	// By default, breaking changes block the update.
+	// +optional
+	IgnoreBreakingChanges bool `json:"ignoreBreakingChanges,omitempty"`
+
 	// KubeConfig defines a kubeconfig that could be used to access another cluster and apply a CRD there.
 	// +optional
 	KubeConfig *KubeConfig `json:"kubeConfig,omitempty"`
@@ -211,6 +216,10 @@ type BootstrapStatus struct {
 	// LastAppliedRevision version is the version or the digest that was successfully applied.
 	// +optional
 	LastAppliedRevision string `json:"lastAppliedRevision,omitempty"`
+
+	// BreakingChanges contains detected breaking schema changes when UpdatePolicy is set.
+	// +optional
+	BreakingChanges []string `json:"breakingChanges,omitempty"`
 }
 
 // GetConditions returns the conditions of the ComponentVersion.

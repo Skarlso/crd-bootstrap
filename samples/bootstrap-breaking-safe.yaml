@@ -1,0 +1,13 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-breaking-safe
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    configMap:
+      name: crd-bootstrap-breaking-updated
+      namespace: crd-bootstrap-system
+  version:
+    semver: 2.0.0
