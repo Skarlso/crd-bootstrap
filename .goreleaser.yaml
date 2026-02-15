@@ -28,39 +28,16 @@ checksum:
   extra_files:
     - glob: output/install.yaml
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
-# for more information on what this target does: https://goreleaser.com/errors/docker-build/
-dockers:
-  - id: linux-build-amd64
-    image_templates:
-    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-amd64"
-    # GOOS of the built binary that should be used.
-    goos: linux
-    # GOARCH of the built binary that should be used.
-    goarch: amd64
+dockers_v2:
+  - images:
+      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller"
+    tags:
+      - "{{ .Tag }}"
     dockerfile: "{{ .Env.DOCKERFILE }}"
-    use: buildx
-    build_flag_templates:
-    - "--platform=linux/amd64"
-  - id: linux-build-arm64
-    image_templates:
-    - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-arm64"
-    # GOOS of the built binary that should be used.
-    goos: linux
-    # GOARCH of the built binary that should be used.
-    goarch: arm64
-    dockerfile: "{{ .Env.DOCKERFILE }}"
-    use: buildx
-    build_flag_templates:
-    - "--platform=linux/arm64"
-docker_manifests:
-  - name_template: "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}"
-    image_templates:
-      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-amd64"
-      - "{{ .Env.REGISTRY }}/skarlso/crd-bootstrap-controller:{{ .Tag }}-linux-arm64"
