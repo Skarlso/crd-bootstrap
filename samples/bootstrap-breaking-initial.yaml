@@ -1,0 +1,13 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-breaking-initial
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  source:
+    configMap:
+      name: crd-bootstrap-breaking-initial
+      namespace: crd-bootstrap-system
+  version:
+    semver: 1.0.0

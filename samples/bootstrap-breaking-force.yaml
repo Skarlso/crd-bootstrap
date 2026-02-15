@@ -1,0 +1,14 @@
+apiVersion: delivery.crd-bootstrap/v1alpha1
+kind: Bootstrap
+metadata:
+  name: bootstrap-breaking-force
+  namespace: crd-bootstrap-system
+spec:
+  interval: 10s
+  updatePolicy: force
+  source:
+    configMap:
+      name: crd-bootstrap-breaking-updated
+      namespace: crd-bootstrap-system
+  version:
+    semver: 2.0.0
