@@ -3,6 +3,7 @@ package breaking
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/pb33f/libopenapi"
 	whatchanged "github.com/pb33f/libopenapi/what-changed"
@@ -38,6 +39,10 @@ func DetectBreakingChanges(oldCRD, newCRD *apiextensionsv1.CustomResourceDefinit
 		if !ok {
 			breaking = append(breaking, fmt.Sprintf("version %q removed", oldVer.Name))
 
+			continue
+		}
+
+		if reflect.DeepEqual(oldVer.Schema.OpenAPIV3Schema, newSchema) {
 			continue
 		}
 
