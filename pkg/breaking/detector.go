@@ -21,8 +21,8 @@ components:
 
 func DetectBreakingChanges(oldCRD, newCRD *apiextensionsv1.CustomResourceDefinition) ([]string, error) {
 	var breaking []string
-
 	newVersions := make(map[string]*apiextensionsv1.JSONSchemaProps)
+
 	for _, v := range newCRD.Spec.Versions {
 		if v.Schema != nil && v.Schema.OpenAPIV3Schema != nil {
 			newVersions[v.Name] = v.Schema.OpenAPIV3Schema
@@ -81,14 +81,17 @@ func compareSchemas(oldSchema, newSchema *apiextensionsv1.JSONSchemaProps) ([]st
 	}
 
 	var descriptions []string //nolint:prealloc // no.
+
 	for _, c := range changes.GetAllChanges() {
 		if !c.Breaking {
 			continue
 		}
+
 		desc := c.Property
 		if c.Original != "" || c.New != "" {
 			desc = fmt.Sprintf("%s: %q -> %q", c.Property, c.Original, c.New)
 		}
+
 		descriptions = append(descriptions, desc)
 	}
 

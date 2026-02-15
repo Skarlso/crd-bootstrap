@@ -107,6 +107,63 @@ func TestE2E(t *testing.T) {
 	}
 
 	t.Log("E2E test passed successfully!")
+
+	t.Run("breaking_change_safe_policy_blocks_update", func(t *testing.T) {
+		t.Log("Applying initial CRD ConfigMap for breaking change test...")
+		if err := applyManifest("samples/breaking-change-configmap-initial.yaml"); err != nil {
+			t.Fatalf("Failed to apply initial breaking change ConfigMap: %v", err)
+		}
+
+		t.Log("Applying initial Bootstrap to install the CRD...")
+		if err := applyManifest("samples/bootstrap-breaking-initial.yaml"); err != nil {
+			t.Fatalf("Failed to apply initial Bootstrap: %v", err)
+		}
+
+		t.Log("Waiting for BreakingTest CRD to be created...")
+		if err := waitForNamedCRD(ctx, dynamicClient, "breakingtests.e2e.crd-bootstrap.io"); err != nil {
+			dumpNamedBootstrap("bootstrap-breaking-initial")
+			t.Fatalf("BreakingTest CRD was not created: %v", err)
+		}
+
+		t.Log("Applying updated ConfigMap with breaking schema change...")
+		if err := applyManifest("samples/breaking-change-configmap-updated.yaml"); err != nil {
+			t.Fatalf("Failed to apply updated breaking change ConfigMap: %v", err)
+		}
+
+		t.Log("Applying Bootstrap with safe update policy...")
+		if err := applyManifest("samples/bootstrap-breaking-safe.yaml"); err != nil {
+			t.Fatalf("Failed to apply safe Bootstrap: %v", err)
+		}
+
+		t.Log("Verifying safe policy blocks the update...")
+		if err := waitForBootstrapCondition(ctx, dynamicClient, "bootstrap-breaking-safe", "Ready", "False"); err != nil {
+			dumpNamedBootstrap("bootstrap-breaking-safe")
+			t.Fatalf("Safe policy did not block the breaking change: %v", err)
+		}
+
+		t.Log("Verifying breakingChanges are populated in status...")
+		if err := waitForBreakingChangesInStatus(ctx, dynamicClient, "bootstrap-breaking-safe"); err != nil {
+			dumpNamedBootstrap("bootstrap-breaking-safe")
+			t.Fatalf("Breaking changes not found in status: %v", err)
+		}
+
+		t.Log("Safe policy breaking change test passed!")
+	})
+
+	t.Run("breaking_change_force_policy_applies_update", func(t *testing.T) {
+		t.Log("Applying Bootstrap with force update policy...")
+		if err := applyManifest("samples/bootstrap-breaking-force.yaml"); err != nil {
+			t.Fatalf("Failed to apply force Bootstrap: %v", err)
+		}
+
+		t.Log("Verifying force policy allows the update...")
+		if err := waitForBootstrapCondition(ctx, dynamicClient, "bootstrap-breaking-force", "Ready", "True"); err != nil {
+			dumpNamedBootstrap("bootstrap-breaking-force")
+			t.Fatalf("Force policy did not apply the breaking change: %v", err)
+		}
+
+		t.Log("Force policy breaking change test passed!")
+	})
 }
 
 func createKindCluster() error {
@@ -284,8 +341,90 @@ func verifyBootstrapStatus(ctx context.Context, client dynamic.Interface) error 
 }
 
 func dumpBootstrap() {
-	cmd := exec.Command("kubectl", "get", "bootstrap", "-n", namespace, "bootstrap-sample", "-o", "yaml")
+	dumpNamedBootstrap("bootstrap-sample")
+}
+
+func dumpNamedBootstrap(name string) {
+	cmd := exec.Command("kubectl", "get", "bootstrap", "-n", namespace, name, "-o", "yaml")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	_ = cmd.Run()
+}
+
+func waitForNamedCRD(ctx context.Context, client dynamic.Interface, name string) error {
+	gvr := schema.GroupVersionResource{
+		Group:    "apiextensions.k8s.io",
+		Version:  "v1",
+		Resource: "customresourcedefinitions",
+	}
+
+	return wait.PollUntilContextTimeout(ctx, pollingInterval, timeout, true, func(ctx context.Context) (bool, error) {
+		_, err := client.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+}
+
+func waitForBootstrapCondition(ctx context.Context, client dynamic.Interface, name, condType, condStatus string) error {
+	gvr := schema.GroupVersionResource{
+		Group:    "delivery.crd-bootstrap",
+		Version:  "v1alpha1",
+		Resource: "bootstraps",
+	}
+
+	return wait.PollUntilContextTimeout(ctx, pollingInterval, timeout, true, func(ctx context.Context) (bool, error) {
+		bootstrap, err := client.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+
+		conditions, found, err := unstructured.NestedSlice(bootstrap.Object, "status", "conditions")
+		if !found || err != nil {
+			return false, nil
+		}
+
+		for _, cond := range conditions {
+			condMap, ok := cond.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			ct, _, _ := unstructured.NestedString(condMap, "type")
+			cs, _, _ := unstructured.NestedString(condMap, "status")
+			if ct == condType && cs == condStatus {
+				return true, nil
+			}
+		}
+
+		return false, nil
+	})
+}
+
+func waitForBreakingChangesInStatus(ctx context.Context, client dynamic.Interface, name string) error {
+	gvr := schema.GroupVersionResource{
+		Group:    "delivery.crd-bootstrap",
+		Version:  "v1alpha1",
+		Resource: "bootstraps",
+	}
+
+	return wait.PollUntilContextTimeout(ctx, pollingInterval, timeout, true, func(ctx context.Context) (bool, error) {
+		bootstrap, err := client.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		breakingChanges, found, err := unstructured.NestedStringSlice(bootstrap.Object, "status", "breakingChanges")
+		if !found || err != nil {
+			return false, nil
+		}
+
+		return len(breakingChanges) > 0, nil
+	})
 }

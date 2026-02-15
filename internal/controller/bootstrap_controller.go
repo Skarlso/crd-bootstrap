@@ -340,6 +340,7 @@ func (r *BootstrapReconciler) detectBreakingChanges(ctx context.Context, objects
 		}
 
 		oldCRD := &v1.CustomResourceDefinition{}
+
 		err = r.Get(ctx, client.ObjectKeyFromObject(newCRD), oldCRD)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
