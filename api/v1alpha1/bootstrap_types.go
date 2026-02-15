@@ -29,6 +29,17 @@ const (
 	BootstrapOwnerLabelKey = "delivery.crd-bootstrap.owned"
 )
 
+// UpdatePolicy defines a way for any update to be applied. Safe by default. If Force is
+// used, that means if the new CRD has breaking changes compared to the old CRD, it will be
+// applied to the cluster regardless.
+// +kubebuilder:validation:Enum=safe;force
+type UpdatePolicy string
+
+const (
+	UpdatePolicyForce UpdatePolicy = "force"
+	UpdatePolicySafe  UpdatePolicy = "safe"
+)
+
 // KubeConfig defines as way to access a remote cluster.
 type KubeConfig struct {
 	// ServiceAccount defines any custom service accounts to use in order to
@@ -183,6 +194,11 @@ type BootstrapSpec struct {
 	// +optional
 	Prune bool `json:"prune,omitempty"`
 
+	// UpdatePolicy controls how breaking CRD schema changes are handled.
+	// When "safe", breaking changes block the update. When "force", breaking changes are logged but applied anyway.
+	// +optional
+	UpdatePolicy UpdatePolicy `json:"updatePolicy,omitempty"`
+
 	// KubeConfig defines a kubeconfig that could be used to access another cluster and apply a CRD there.
 	// +optional
 	KubeConfig *KubeConfig `json:"kubeConfig,omitempty"`
@@ -211,6 +227,10 @@ type BootstrapStatus struct {
 	// LastAppliedRevision version is the version or the digest that was successfully applied.
 	// +optional
 	LastAppliedRevision string `json:"lastAppliedRevision,omitempty"`
+
+	// BreakingChanges contains detected breaking schema changes when UpdatePolicy is set.
+	// +optional
+	BreakingChanges []string `json:"breakingChanges,omitempty"`
 }
 
 // GetConditions returns the conditions of the ComponentVersion.

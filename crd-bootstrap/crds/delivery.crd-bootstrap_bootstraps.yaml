@@ -297,6 +297,14 @@ spec:
                 description: Template defines a set of values to test a new version
                   against.
                 type: object
+              updatePolicy:
+                description: |-
+                  UpdatePolicy controls how breaking CRD schema changes are handled.
+                  When "safe", breaking changes block the update. When "force", breaking changes are logged but applied anyway.
+                enum:
+                - safe
+                - force
+                type: string
               version:
                 description: |-
                   Version defines constraints for sources to check against. It can either be a semver constraint or a Digest
@@ -317,6 +325,12 @@ spec:
           status:
             description: BootstrapStatus defines the observed state of Bootstrap.
             properties:
+              breakingChanges:
+                description: BreakingChanges contains detected breaking schema changes
+                  when UpdatePolicy is set.
+                items:
+                  type: string
+                type: array
               conditions:
                 description: Conditions contains the conditions of this object.
                 items:

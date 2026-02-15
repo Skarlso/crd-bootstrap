@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
+	"github.com/Skarlso/crd-bootstrap/pkg/breaking"
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
 )
 
@@ -190,6 +191,27 @@ func (r *BootstrapReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		applied[o.GetName()]++
 	}
 
+	if obj.Spec.UpdatePolicy != "" {
+		breakingChanges, berr := r.detectBreakingChanges(ctx, objects)
+		if berr != nil {
+			conditions.MarkFalse(obj, meta.ReadyCondition, "BreakingChangeDetectionFailed", "failed to detect breaking changes: %s", berr)
+
+			return ctrl.Result{}, fmt.Errorf("failed to detect breaking changes: %w", berr)
+		}
+
+		obj.Status.BreakingChanges = breakingChanges
+
+		if len(breakingChanges) > 0 {
+			if obj.Spec.UpdatePolicy == v1alpha1.UpdatePolicySafe {
+				conditions.MarkFalse(obj, meta.ReadyCondition, "BreakingChangeDetected", "breaking schema changes detected; blocked by safe update policy")
+
+				return ctrl.Result{}, fmt.Errorf("breaking schema changes detected: %v", breakingChanges)
+			}
+
+			logger.Info("breaking changes detected but force policy is set, proceeding", "breakingChanges", breakingChanges)
+		}
+	}
+
 	if err := r.validateObjects(ctx, obj, objects); err != nil {
 		if !obj.Spec.ContinueOnValidationError {
 			conditions.MarkFalse(obj, meta.ReadyCondition, "CRDValidationFailed", "validation failed to on the crd template: %s", err)
@@ -300,4 +322,42 @@ func (r *BootstrapReconciler) validateObjects(ctx context.Context, obj *v1alpha1
 	}
 
 	return nil
+}
+
+func (r *BootstrapReconciler) detectBreakingChanges(ctx context.Context, objects []*unstructured.Unstructured) ([]string, error) {
+	logger := log.FromContext(ctx)
+	var allBreaking []string
+
+	for _, o := range objects {
+		content, err := o.MarshalJSON()
+		if err != nil {
+			return nil, fmt.Errorf("marshaling object %s: %w", o.GetName(), err)
+		}
+
+		newCRD := &v1.CustomResourceDefinition{}
+		if err := yaml.Unmarshal(content, newCRD); err != nil {
+			return nil, fmt.Errorf("unmarshaling CRD %s: %w", o.GetName(), err)
+		}
+
+		oldCRD := &v1.CustomResourceDefinition{}
+		err = r.Get(ctx, client.ObjectKeyFromObject(newCRD), oldCRD)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				logger.V(v1alpha1.LogLevelDebug).Info("CRD not yet installed, skipping breaking change check", "crd", o.GetName())
+
+				continue
+			}
+
+			return nil, fmt.Errorf("fetching existing CRD %s: %w", o.GetName(), err)
+		}
+
+		changes, err := breaking.DetectBreakingChanges(oldCRD, newCRD)
+		if err != nil {
+			return nil, fmt.Errorf("detecting breaking changes for %s: %w", o.GetName(), err)
+		}
+
+		allBreaking = append(allBreaking, changes...)
+	}
+
+	return allBreaking, nil
 }
