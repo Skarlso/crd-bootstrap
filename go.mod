@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/docker/cli v29.2.1+incompatible
 	github.com/fluxcd/pkg/apis/meta v1.25.0
-	github.com/fluxcd/pkg/runtime v0.101.0
+	github.com/fluxcd/pkg/runtime v0.102.0
 	github.com/fluxcd/pkg/ssa v0.69.0
 	github.com/pb33f/libopenapi v0.33.11
 	github.com/stretchr/testify v1.11.1
