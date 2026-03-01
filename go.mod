@@ -10,14 +10,14 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.25.0
 	github.com/fluxcd/pkg/runtime v0.102.0
 	github.com/fluxcd/pkg/ssa v0.69.0
-	github.com/pb33f/libopenapi v0.33.11
+	github.com/pb33f/libopenapi v0.34.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.35.0
 	helm.sh/helm/v3 v3.20.0
-	k8s.io/api v0.35.1
-	k8s.io/apiextensions-apiserver v0.35.1
-	k8s.io/apimachinery v0.35.1
-	k8s.io/client-go v0.35.1
+	k8s.io/api v0.35.2
+	k8s.io/apiextensions-apiserver v0.35.2
+	k8s.io/apimachinery v0.35.2
+	k8s.io/client-go v0.35.2
 	oras.land/oras-go/v2 v2.6.0
 	sigs.k8s.io/controller-runtime v0.23.1
 )
@@ -119,9 +119,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
-	k8s.io/apiserver v0.35.1 // indirect
+	k8s.io/apiserver v0.35.2 // indirect
 	k8s.io/cli-runtime v0.35.0 // indirect
-	k8s.io/component-base v0.35.1 // indirect
+	k8s.io/component-base v0.35.2 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	k8s.io/kubectl v0.35.0 // indirect
