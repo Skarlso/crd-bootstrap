@@ -85,7 +85,7 @@ func compareSchemas(oldSchema, newSchema *apiextensionsv1.JSONSchemaProps) ([]st
 		return nil, nil
 	}
 
-	var descriptions []string //nolint:prealloc // no.
+	var descriptions []string
 
 	for _, c := range changes.GetAllChanges() {
 		if !c.Breaking {

@@ -506,6 +506,14 @@ func (s *Source) configureHTTPCredentials(ctx context.Context, secret *v1.Secret
 }
 
 func (s *Source) appendFilesToCrds(root string, crds *os.File) error {
+	dir, err := os.OpenRoot(root)
+	if err != nil {
+		return fmt.Errorf("failed to open root %s: %w", root, err)
+	}
+	defer func() {
+		_ = dir.Close()
+	}()
+
 	return filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -515,7 +523,12 @@ func (s *Source) appendFilesToCrds(root string, crds *os.File) error {
 			return nil
 		}
 
-		content, err := os.ReadFile(filepath.Clean(path))
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path for %s: %w", path, err)
+		}
+
+		content, err := dir.ReadFile(rel)
 		if err != nil {
 			return fmt.Errorf("failed to read file %s: %w", path, err)
 		}
