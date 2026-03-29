@@ -71,7 +71,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
       - name: Install chart unittest
         run: |
           helm env
