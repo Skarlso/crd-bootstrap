@@ -259,7 +259,3 @@ type BootstrapList struct {
 
 	Items []Bootstrap `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&Bootstrap{}, &BootstrapList{})
-}
