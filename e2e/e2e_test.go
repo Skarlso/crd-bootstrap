@@ -26,7 +26,7 @@ const (
 )
 
 func TestE2E(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Log("Creating kind cluster...")
 	if err := createKindCluster(); err != nil {

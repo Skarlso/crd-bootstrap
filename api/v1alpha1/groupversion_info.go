@@ -37,7 +37,7 @@ var (
 )
 
 func addKnownTypes(scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(GroupVersion, &Bootstrap{})
+	scheme.AddKnownTypes(GroupVersion, &Bootstrap{}, &BootstrapList{})
 
 	metav1.AddToGroupVersion(scheme, GroupVersion)
 
