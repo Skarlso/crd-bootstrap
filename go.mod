@@ -6,14 +6,14 @@ replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/docker/cli v29.5.3+incompatible
+	github.com/docker/cli v29.6.0+incompatible
 	github.com/fluxcd/pkg/apis/meta v1.30.0
 	github.com/fluxcd/pkg/runtime v0.110.0
 	github.com/fluxcd/pkg/ssa v0.76.0
-	github.com/pb33f/libopenapi v0.38.0
+	github.com/pb33f/libopenapi v0.38.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.36.0
-	helm.sh/helm/v3 v3.21.1
+	helm.sh/helm/v3 v3.21.2
 	k8s.io/api v0.36.2
 	k8s.io/apiextensions-apiserver v0.36.2
 	k8s.io/apimachinery v0.36.2
@@ -124,11 +124,11 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apiserver v0.36.2 // indirect
-	k8s.io/cli-runtime v0.36.1 // indirect
+	k8s.io/cli-runtime v0.36.2 // indirect
 	k8s.io/component-base v0.36.2 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // indirect
-	k8s.io/kubectl v0.36.1 // indirect
+	k8s.io/kubectl v0.36.2 // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect
