@@ -6,11 +6,11 @@ replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/docker/cli v29.6.0+incompatible
+	github.com/docker/cli v29.6.1+incompatible
 	github.com/fluxcd/pkg/apis/meta v1.30.0
 	github.com/fluxcd/pkg/runtime v0.110.0
 	github.com/fluxcd/pkg/ssa v0.76.0
-	github.com/pb33f/libopenapi v0.38.1
+	github.com/pb33f/libopenapi v0.38.4
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.36.0
 	helm.sh/helm/v3 v3.21.2
@@ -105,7 +105,7 @@ require (
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	go.yaml.in/yaml/v4 v4.0.0-rc.5 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
 	golang.org/x/net v0.55.0 // indirect
