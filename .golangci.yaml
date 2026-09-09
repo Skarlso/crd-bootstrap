@@ -1,7 +1,7 @@
 version: "2"
 
 run:
-  go: "1.25"
+  go: "1.27"
   timeout: 10m
   tests: false
   allow-parallel-runners: true
@@ -19,6 +19,7 @@ linters:
     - dupl             # Check code duplications.
     - exhaustive       # Doesn't really make sense.
     - exhaustruct      # Doesn't really make sense.
+    - exhaustruct_v5
     - forcetypeassert  # Priority: that can lead to serious crashes.
     - funcorder
     - funlen           # Break long functions.

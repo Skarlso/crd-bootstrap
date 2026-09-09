@@ -7,7 +7,7 @@ appVersion: "0.0.0" # will be replaced by the publishing workflow.
 icon: https://raw.githubusercontent.com/Skarlso/crd-bootstrap/main/hack/crd-bootstrap-logo.png
 home: https://github.com/Skarlso/crd-bootstrap
 maintainers:
-  - name: Gergely Brautigam
+  - name: Gergely Bräutigam
     email: skarlso777@gmail.com
     url: https://github.com/Skarlso
 
@@ -24,7 +24,7 @@ annotations:
 
   artifacthub.io/crds: |
     - kind: Bootstrap
-      version: v1
+      version: v1alpha1
       name: bootstrap
       displayName: Bootstrap
       description: Define a CRD to bootstrap in a given cluster.
@@ -38,7 +38,7 @@ annotations:
       spec:
         interval: 10s
         source:
-          gitHub:
+          github:
             owner: fluxcd
             repo: flux2
             manifest: install.yaml

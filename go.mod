@@ -1,6 +1,6 @@
 module github.com/Skarlso/crd-bootstrap
 
-go 1.26.1
+go 1.27.1
 
 replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
