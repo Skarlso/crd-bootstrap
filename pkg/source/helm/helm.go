@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -27,6 +26,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/Skarlso/crd-bootstrap/api/v1alpha1"
 	"github.com/Skarlso/crd-bootstrap/pkg/source"
@@ -153,12 +153,12 @@ func (s *Source) createCrdYaml(dir string, tempHelm string) (err error) {
 	}()
 
 	// find all yaml files that contain CRDs in them and append to the end result.
-	if err := filepath.Walk(tempHelm, func(path string, info fs.FileInfo, err error) error {
+	if err := filepath.WalkDir(tempHelm, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if info.Name() == "crds" && info.IsDir() {
+		if d.IsDir() && d.Name() == "crds" {
 			// append files from all folders that are possibly under the crds folder
 			return s.appendFilesToCrds(path, crds)
 		}
@@ -209,67 +209,25 @@ func (s *Source) HasUpdate(ctx context.Context, obj *v1alpha1.Bootstrap) (bool, 
 		}
 	}
 
-	// get latest version that applies to the constraint.
-	constrains, err := semver.NewConstraint(obj.Spec.Version.Semver)
+	constraint, err := semver.NewConstraint(obj.Spec.Version.Semver)
 	if err != nil {
 		return false, "", fmt.Errorf("failed to build constraint: %w", err)
 	}
 
-	latestRemoteVersion := s.getLatestVersion(versions, constrains)
-
-	latestVersionSemver, err := semver.NewVersion(latestRemoteVersion)
+	latestRemoteVersion, err := source.LatestMatchingVersion(versions, constraint)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to parse current version '%s' as semver: %w", latestRemoteVersion, err)
-	}
+		// A repository that has not published a matching version yet is not an error, just nothing to do.
+		if errors.Is(err, source.ErrNoMatchingVersion) {
+			log.FromContext(ctx).Info("no chart version satisfies the constraint",
+				"constraint", obj.Spec.Version.Semver, "chart", obj.Spec.Source.Helm.ChartName)
 
-	constraint, err := semver.NewConstraint(obj.Spec.Version.Semver)
-	if err != nil {
-		return false, "", fmt.Errorf("failed to parse constraint: %w", err)
-	}
-
-	// If the latest version satisfies the constraint, we check it against the latest applied version if it's set.
-	if constraint.Check(latestVersionSemver) {
-		if obj.Status.LastAppliedRevision != "" {
-			// we know this could be a digest, we don't allow switching forms in a bootstrap.
-			// i.e.: ConfigMap was used as a source, but we switched to URL instead.
-			lastAppliedRevisionSemver, err := semver.NewVersion(obj.Status.LastAppliedRevision)
-			if err != nil {
-				return false, "", fmt.Errorf("failed to parse last applied revision '%s': %w", obj.Status.LastAppliedRevision, err)
-			}
-
-			if lastAppliedRevisionSemver.Equal(latestVersionSemver) || lastAppliedRevisionSemver.GreaterThan(latestVersionSemver) {
-				return false, obj.Status.LastAppliedRevision, nil
-			}
+			return false, obj.Status.LastAppliedRevision, nil
 		}
 
-		// last applied revision was either empty, or lower than the last version that satisfied the constraint.
-		// return update needed and the latest fetched version.
-		return true, latestRemoteVersion, nil
+		return false, "", err
 	}
 
-	return false, obj.Status.LastAppliedRevision, nil
-}
-
-// getLatestVersion selects all the versions that match the constraint and gets back the latest.
-func (s *Source) getLatestVersion(versions []string, constraint *semver.Constraints) string {
-	semvers := make([]*semver.Version, 0)
-
-	for _, v := range versions {
-		semv, err := semver.NewVersion(v)
-		if err != nil {
-			continue
-		}
-
-		if constraint.Check(semv) {
-			semvers = append(semvers, semv)
-		}
-	}
-
-	sort.Slice(semvers, func(i, j int) bool {
-		return semvers[i].GreaterThan(semvers[j])
-	})
-
-	return semvers[0].Original()
+	return source.CheckSemverUpdate(latestRemoteVersion, obj)
 }
 
 func (s *Source) findVersionsForOCIRegistry(ctx context.Context, chartRef *v1alpha1.Helm, namespace string) ([]string, error) {
@@ -514,12 +472,12 @@ func (s *Source) appendFilesToCrds(root string, crds *os.File) error {
 		_ = dir.Close()
 	}()
 
-	return filepath.Walk(root, func(path string, info fs.FileInfo, err error) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if info.IsDir() {
+		if d.IsDir() {
 			return nil
 		}
 
