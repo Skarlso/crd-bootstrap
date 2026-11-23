@@ -6,11 +6,11 @@ replace github.com/imdario/mergo => dario.cat/mergo v1.0.1
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
-	github.com/docker/cli v29.9.3+incompatible
-	github.com/fluxcd/pkg/apis/meta v1.38.0
-	github.com/fluxcd/pkg/runtime v0.122.0
-	github.com/fluxcd/pkg/ssa v0.84.0
-	github.com/pb33f/libopenapi v0.42.5
+	github.com/docker/cli v29.10.0+incompatible
+	github.com/fluxcd/pkg/apis/meta v1.39.0
+	github.com/fluxcd/pkg/runtime v0.123.0
+	github.com/fluxcd/pkg/ssa v0.85.0
+	github.com/pb33f/libopenapi v0.43.2
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/oauth2 v0.38.0
 	helm.sh/helm/v3 v3.22.1
@@ -19,7 +19,7 @@ require (
 	k8s.io/apimachinery v0.37.2
 	k8s.io/client-go v0.37.2
 	oras.land/oras-go/v2 v2.7.0
-	sigs.k8s.io/controller-runtime v0.25.2
+	sigs.k8s.io/controller-runtime v0.25.3
 )
 
 require (
@@ -83,7 +83,7 @@ require (
 	github.com/onsi/gomega v1.44.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
-	github.com/pb33f/go-yaml v0.1.1 // indirect
+	github.com/pb33f/go-yaml v0.2.0 // indirect
 	github.com/pb33f/jsonpath v0.8.5 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
